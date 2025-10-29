@@ -2,10 +2,12 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-  <TargetFramework>net8.0-windows10.0.19041</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AssemblyName>msixtool</AssemblyName>
+    <!-- 排除测试目录 -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests/**</DefaultItemExcludes>
     <!-- Native AOT 编译 - 无需.NET Runtime -->
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>false</InvariantGlobalization>
@@ -22,12 +24,6 @@
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
-  </ItemGroup>
-
-  <!-- 排除测试项目源码避免被主项目编译 -->
-  <ItemGroup>
-    <Compile Remove="MsixTool.Tests\**\*.cs" />
-    <None Remove="MsixTool.Tests\**\*.cs" />
   </ItemGroup>
 
   <!-- 包含tools目录到发布输出 -->
