@@ -290,7 +290,7 @@ namespace MsixTool.Commands
                             try
                             {
                                 var fileInfo = new FileInfo(finalMsixPath);
-                                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                                var timestamp = DateTime.Now.ToString("yyyyMMddHHmm");
                                 var nameWithoutExt = Path.GetFileNameWithoutExtension(finalMsixPath);
                                 var extension = Path.GetExtension(finalMsixPath);
                                 var backupName = $"{nameWithoutExt}_{timestamp}{extension}";
@@ -541,7 +541,7 @@ namespace MsixTool.Commands
                             try
                             {
                                 var fileInfo = new FileInfo(finalMsixPath);
-                                var timestamp = DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+                                var timestamp = DateTime.Now.ToString("yyyyMMddHHmm");
                                 var nameWithoutExt = Path.GetFileNameWithoutExtension(finalMsixPath);
                                 var extension = Path.GetExtension(finalMsixPath);
                                 var backupName = $"{nameWithoutExt}_{timestamp}{extension}";

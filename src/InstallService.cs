@@ -8,17 +8,28 @@ namespace MsixTool.Services
     {
         public async Task InstallPackageAsync(string? sourcePath, string? packageName, string? destPath)
         {
-            Console.WriteLine("¿ªÊ¼°²×° MSIX °ü...");
+            Console.WriteLine("å¼€å§‹å®‰è£… MSIX åŒ…...");
 
             var msixPath = DetermineMsixPath(sourcePath, packageName);
-            Console.WriteLine($"°²×°°üÂ·¾¶: {msixPath}");
+            Console.WriteLine($"å®‰è£…åŒ…è·¯å¾„: {msixPath}");
 
             if (!File.Exists(msixPath))
             {
-                throw new FileNotFoundException($"MSIX °üÎÄ¼ş²»´æÔÚ: {msixPath}");
+                throw new FileNotFoundException($"MSIX åŒ…æ–‡ä»¶ä¸å­˜åœ¨: {msixPath}");
             }
 
-            // Èç¹ûÎ´Ö¸¶¨ destPath£¬³¢ÊÔ´ÓÅäÖÃ¶ÁÈ¡
+            // æ£€æŸ¥å¹¶å¸è½½å·²å®‰è£…çš„åŒååŒ…
+            try
+            {
+                var (pkgName, _, _) = ManifestHelper.GetPackageInfoFromMsix(msixPath);
+                await UninstallExistingPackageAsync(pkgName);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"âš  æ£€æŸ¥å·²å®‰è£…åŒ…æ—¶å‡ºé”™: {ex.Message}");
+            }
+
+            // å¦‚æœæœªæŒ‡å®š destPathï¼Œå°è¯•ä»é…ç½®è¯»å–
             string? actualDestPath = destPath;
             if (string.IsNullOrEmpty(actualDestPath))
             {
@@ -28,22 +39,22 @@ namespace MsixTool.Services
                     actualDestPath = ConfigManager.GetSparsePackagePath(publisher, pkgName);
                     if (!string.IsNullOrEmpty(actualDestPath))
                     {
-                        Console.WriteLine($"´ÓÅäÖÃ¶ÁÈ¡µ½Íâ²¿³ÌĞòÂ·¾¶: {actualDestPath}");
+                        Console.WriteLine($"ä»é…ç½®è¯»å–åˆ°å¤–éƒ¨ç¨‹åºè·¯å¾„: {actualDestPath}");
                     }
                 }
                 catch
                 {
-                    // ¶ÁÈ¡Ê§°ÜÔòºöÂÔ£¬¼ÌĞøÕı³£°²×°Á÷³Ì
+                    // è¯»å–å¤±è´¥åˆ™å¿½ç•¥ï¼Œç»§ç»­æ­£å¸¸å®‰è£…æµç¨‹
                 }
             }
 
             try
             {
-                // Ê¹ÓÃ PowerShell °²×°°ü
+                // ä½¿ç”¨ PowerShell å®‰è£…åŒ…
                 await InstallUsingPowerShellAsync(msixPath, actualDestPath);
-                Console.WriteLine("? MSIX °ü°²×°³É¹¦");
+                Console.WriteLine("âœ“ MSIX åŒ…å®‰è£…æˆåŠŸ");
                 
-                // Èç¹ûÖ¸¶¨ÁË destPath£¬±£´æµ½ÅäÖÃ
+                // å¦‚æœæŒ‡å®šäº† destPathï¼Œä¿å­˜åˆ°é…ç½®
                 if (!string.IsNullOrEmpty(actualDestPath))
                 {
                     try
@@ -53,25 +64,23 @@ namespace MsixTool.Services
                     }
                     catch (Exception ex)
                     {
-                        Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine($"? ±£´æÅäÖÃÊ§°Ü: {ex.Message}"); Console.ResetColor();
+                        Console.WriteLine($"âš  ä¿å­˜é…ç½®å¤±è´¥: {ex.Message}");
                     }
                 }
 
-                // Ë¢ĞÂÍ¼±ê»º´æ£¬±ÜÃâ¿ªÊ¼²Ëµ¥²ĞÁô¾ÉÍ¼±ê
+                // åˆ·æ–°å›¾æ ‡ç¼“å­˜ï¼Œé¿å…å¼€å§‹èœå•æ®‹ç•™æ—§å›¾æ ‡
                 try
                 {
                     IconCacheHelper.ClearIconCache();
                 }
                 catch (Exception iconEx)
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine($"? Í¼±ê»º´æË¢ĞÂÊ§°Ü: {iconEx.Message}"); Console.ResetColor();
-                    Console.ResetColor();
+                    Console.WriteLine($"âš  å›¾æ ‡ç¼“å­˜åˆ·æ–°å¤±è´¥: {iconEx.Message}");
                 }
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"°²×°Ê§°Ü: {ex.Message}", ex);
+                throw new InvalidOperationException($"å®‰è£…å¤±è´¥: {ex.Message}", ex);
             }
         }
 
@@ -79,35 +88,35 @@ namespace MsixTool.Services
         {
             if (string.IsNullOrEmpty(packageName))
             {
-                throw new ArgumentException("±ØĞëÖ¸¶¨ÒªĞ¶ÔØµÄ°üÃû³Æ");
+                throw new ArgumentException("å¿…é¡»æŒ‡å®šè¦å¸è½½çš„åŒ…åç§°");
             }
 
-            Console.WriteLine($"¿ªÊ¼Ğ¶ÔØ°ü: {packageName}");
+            Console.WriteLine($"å¼€å§‹å¸è½½åŒ…: {packageName}");
 
             try
             {
-                // Ê¹ÓÃ PowerShell Ğ¶ÔØ°ü
+                // ä½¿ç”¨ PowerShell å¸è½½åŒ…
                 await UninstallUsingPowerShellAsync(packageName);
-                Console.WriteLine("? °üĞ¶ÔØ³É¹¦");
-                // Ë¢ĞÂÍ¼±ê»º´æ
+                Console.WriteLine("âœ“ åŒ…å¸è½½æˆåŠŸ");
+                // åˆ·æ–°å›¾æ ‡ç¼“å­˜
                 try
                 {
                     IconCacheHelper.ClearIconCache();
                 }
                 catch (Exception iconEx)
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine($"? Í¼±ê»º´æË¢ĞÂÊ§°Ü: {iconEx.Message}"); Console.ResetColor();
+                    Console.WriteLine($"âš  å›¾æ ‡ç¼“å­˜åˆ·æ–°å¤±è´¥: {iconEx.Message}");
                 }
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"Ğ¶ÔØÊ§°Ü: {ex.Message}", ex);
+                throw new InvalidOperationException($"å¸è½½å¤±è´¥: {ex.Message}", ex);
             }
         }
 
         public async Task FindPackagesAsync(string packageNamePattern)
         {
-            Console.WriteLine($"²éÕÒ°üº¬ '{packageNamePattern}' µÄÒÑ°²×°°ü...");
+            Console.WriteLine($"æŸ¥æ‰¾åŒ…å« '{packageNamePattern}' çš„å·²å®‰è£…åŒ…...");
 
             try
             {
@@ -116,21 +125,21 @@ namespace MsixTool.Services
 
                 if (!success)
                 {
-                    throw new InvalidOperationException($"²éÕÒ°üÊ§°Ü: {error}");
+                    throw new InvalidOperationException($"æŸ¥æ‰¾åŒ…å¤±è´¥: {error}");
                 }
 
                 if (string.IsNullOrWhiteSpace(output))
                 {
-                    Console.WriteLine("Î´ÕÒµ½Æ¥ÅäµÄ°ü");
+                    Console.WriteLine("æœªæ‰¾åˆ°åŒ¹é…çš„åŒ…");
                     return;
                 }
 
-                Console.WriteLine("ÕÒµ½ÒÔÏÂÆ¥ÅäµÄ°ü:");
+                Console.WriteLine("æ‰¾åˆ°ä»¥ä¸‹åŒ¹é…çš„åŒ…:");
                 Console.WriteLine(output);
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"²éÕÒ°üÊ§°Ü: {ex.Message}", ex);
+                throw new InvalidOperationException($"æŸ¥æ‰¾åŒ…å¤±è´¥: {ex.Message}", ex);
             }
         }
 
@@ -152,22 +161,22 @@ namespace MsixTool.Services
                     }
                     else if (msixFiles.Length > 1)
                     {
-                        Console.WriteLine("ÕÒµ½¶à¸ö MSIX ÎÄ¼ş:");
+                        Console.WriteLine("æ‰¾åˆ°å¤šä¸ª MSIX æ–‡ä»¶:");
                         for (int i = 0; i < msixFiles.Length; i++)
                         {
                             Console.WriteLine($"{i + 1}. {Path.GetFileName(msixFiles[i])}");
                         }
-                        Console.Write("ÇëÑ¡ÔñÎÄ¼ş (ÊäÈëĞòºÅ): ");
+                        Console.Write("è¯·é€‰æ‹©æ–‡ä»¶ (è¾“å…¥åºå·): ");
                         if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= msixFiles.Length)
                         {
                             return msixFiles[choice - 1];
                         }
-                        throw new InvalidOperationException("ÎŞĞ§µÄÑ¡Ôñ");
+                        throw new InvalidOperationException("æ— æ•ˆçš„é€‰æ‹©");
                     }
                 }
             }
 
-            // ÔÚµ±Ç°Ä¿Â¼²éÕÒ MSIX ÎÄ¼ş
+            // åœ¨å½“å‰ç›®å½•æŸ¥æ‰¾ MSIX æ–‡ä»¶
             var currentDir = Environment.CurrentDirectory;
             var msixFilesInCurrent = Directory.GetFiles(currentDir, "*.msix");
 
@@ -196,22 +205,22 @@ namespace MsixTool.Services
                 return SelectFromMultipleFiles(msixFilesInCurrent);
             }
 
-            throw new FileNotFoundException("Î´ÕÒµ½ MSIX °üÎÄ¼ş");
+            throw new FileNotFoundException("æœªæ‰¾åˆ° MSIX åŒ…æ–‡ä»¶");
         }
 
         private string SelectFromMultipleFiles(string[] files)
         {
-            Console.WriteLine("ÕÒµ½¶à¸ö MSIX ÎÄ¼ş:");
+            Console.WriteLine("æ‰¾åˆ°å¤šä¸ª MSIX æ–‡ä»¶:");
             for (int i = 0; i < files.Length; i++)
             {
                 Console.WriteLine($"{i + 1}. {Path.GetFileName(files[i])}");
             }
-            Console.Write("ÇëÑ¡ÔñÎÄ¼ş (ÊäÈëĞòºÅ): ");
+            Console.Write("è¯·é€‰æ‹©æ–‡ä»¶ (è¾“å…¥åºå·): ");
             if (int.TryParse(Console.ReadLine(), out int choice) && choice > 0 && choice <= files.Length)
             {
                 return files[choice - 1];
             }
-            throw new InvalidOperationException("ÎŞĞ§µÄÑ¡Ôñ");
+            throw new InvalidOperationException("æ— æ•ˆçš„é€‰æ‹©");
         }
 
         private async Task InstallUsingPowerShellAsync(string msixPath, string? destPath)
@@ -220,136 +229,136 @@ namespace MsixTool.Services
             
             if (!string.IsNullOrEmpty(destPath))
             {
-                // Ê¹ÓÃ -ExternalLocation ²ÎÊıÖ¸¶¨Íâ²¿¿ÉÖ´ĞĞ³ÌĞòÂ·¾¶£¨Ï¡Êè°ü£©
+                // ä½¿ç”¨ -ExternalLocation å‚æ•°æŒ‡å®šå¤–éƒ¨å¯æ‰§è¡Œç¨‹åºè·¯å¾„ï¼ˆç¨€ç–åŒ…ï¼‰
                 command = $"Add-AppxPackage -Path '{msixPath}' -ExternalLocation '{destPath}'";
-                Console.WriteLine($"Ê¹ÓÃÍâ²¿³ÌĞòÂ·¾¶: {destPath}");
+                Console.WriteLine($"ä½¿ç”¨å¤–éƒ¨ç¨‹åºè·¯å¾„: {destPath}");
             }
 
             var (success, output, error) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{command}\"");
 
             if (!success)
             {
-                throw new InvalidOperationException($"PowerShell °²×°ÃüÁîÊ§°Ü: {error}");
+                throw new InvalidOperationException($"PowerShell å®‰è£…å‘½ä»¤å¤±è´¥: {error}");
             }
 
             if (!string.IsNullOrEmpty(output))
             {
-                Console.WriteLine($"Êä³ö: {output}");
+                Console.WriteLine($"è¾“å‡º: {output}");
             }
         }
 
         private async Task UninstallUsingPowerShellAsync(string packageName)
         {
-            // Ê×ÏÈ²éÕÒÍêÕûµÄ°üÃû
+            // é¦–å…ˆæŸ¥æ‰¾å®Œæ•´çš„åŒ…å
             var findCommand = $"Get-AppxPackage | Where-Object {{$_.Name -like '*{packageName}*'}} | Select-Object -First 1 -ExpandProperty PackageFullName";
             var (findSuccess, findOutput, findError) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{findCommand}\"");
 
             if (!findSuccess || string.IsNullOrWhiteSpace(findOutput))
             {
-                throw new InvalidOperationException($"Î´ÕÒµ½°üº¬ '{packageName}' µÄÒÑ°²×°°ü");
+                throw new InvalidOperationException($"æœªæ‰¾åˆ°åŒ…å« '{packageName}' çš„å·²å®‰è£…åŒ…");
             }
 
             var fullPackageName = findOutput.Trim();
-            Console.WriteLine($"ÕÒµ½°ü: {fullPackageName}");
+            Console.WriteLine($"æ‰¾åˆ°åŒ…: {fullPackageName}");
 
             var removeCommand = $"Remove-AppxPackage -Package '{fullPackageName}'";
             var (success, output, error) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{removeCommand}\"");
 
             if (!success)
             {
-                throw new InvalidOperationException($"PowerShell Ğ¶ÔØÃüÁîÊ§°Ü: {error}");
+                throw new InvalidOperationException($"PowerShell å¸è½½å‘½ä»¤å¤±è´¥: {error}");
             }
 
             if (!string.IsNullOrEmpty(output))
             {
-                Console.WriteLine($"Êä³ö: {output}");
+                Console.WriteLine($"è¾“å‡º: {output}");
             }
         }
 
         /// <summary>
-        /// ×¢²áÏ¡Êè°ü£¨Ê¹ÓÃÇåµ¥ÎÄ¼şºÍÍâ²¿Î»ÖÃ£©
+        /// æ³¨å†Œç¨€ç–åŒ…ï¼ˆä½¿ç”¨æ¸…å•æ–‡ä»¶å’Œå¤–éƒ¨ä½ç½®ï¼‰
         /// </summary>
         public async Task RegisterSparsePackageAsync(string manifestPath, string externalLocation)
         {
-            Console.WriteLine("¿ªÊ¼×¢²áÏ¡Êè°ü...");
-            Console.WriteLine($"Çåµ¥Â·¾¶: {manifestPath}");
-            Console.WriteLine($"Íâ²¿³ÌĞòÎ»ÖÃ: {externalLocation}");
+            Console.WriteLine("å¼€å§‹æ³¨å†Œç¨€ç–åŒ…...");
+            Console.WriteLine($"æ¸…å•è·¯å¾„: {manifestPath}");
+            Console.WriteLine($"å¤–éƒ¨ç¨‹åºä½ç½®: {externalLocation}");
 
             if (!File.Exists(manifestPath))
             {
-                throw new FileNotFoundException($"Çåµ¥ÎÄ¼ş²»´æÔÚ: {manifestPath}");
+                throw new FileNotFoundException($"æ¸…å•æ–‡ä»¶ä¸å­˜åœ¨: {manifestPath}");
             }
 
             if (!Directory.Exists(externalLocation))
             {
-                throw new DirectoryNotFoundException($"Íâ²¿³ÌĞòÄ¿Â¼²»´æÔÚ: {externalLocation}");
+                throw new DirectoryNotFoundException($"å¤–éƒ¨ç¨‹åºç›®å½•ä¸å­˜åœ¨: {externalLocation}");
             }
 
             try
             {
-                // Ê¹ÓÃ Add-AppxPackage -Register ×¢²áÏ¡Êè°ü
+                // ä½¿ç”¨ Add-AppxPackage -Register æ³¨å†Œç¨€ç–åŒ…
                 var command = $"Add-AppxPackage -Register '{manifestPath}' -ExternalLocation '{externalLocation}'";
                 var (success, output, error) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{command}\"");
 
                 if (!success)
                 {
-                    throw new InvalidOperationException($"Ï¡Êè°ü×¢²áÊ§°Ü: {error}");
+                    throw new InvalidOperationException($"ç¨€ç–åŒ…æ³¨å†Œå¤±è´¥: {error}");
                 }
 
                 if (!string.IsNullOrEmpty(output))
                 {
-                    Console.WriteLine($"Êä³ö: {output}");
+                    Console.WriteLine($"è¾“å‡º: {output}");
                 }
 
-                Console.WriteLine("? Ï¡Êè°ü×¢²á³É¹¦");
+                Console.WriteLine("âœ“ ç¨€ç–åŒ…æ³¨å†ŒæˆåŠŸ");
                 try
                 {
                     IconCacheHelper.ClearIconCache();
                 }
                 catch (Exception iconEx)
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine($"? Í¼±ê»º´æË¢ĞÂÊ§°Ü: {iconEx.Message}"); Console.ResetColor();
+                    Console.WriteLine($"âš  å›¾æ ‡ç¼“å­˜åˆ·æ–°å¤±è´¥: {iconEx.Message}");
                 }
             }
             catch (Exception ex)
             {
-                throw new InvalidOperationException($"×¢²áÊ§°Ü: {ex.Message}", ex);
+                throw new InvalidOperationException($"æ³¨å†Œå¤±è´¥: {ex.Message}", ex);
             }
         }
 
         /// <summary>
-        /// °²×°Ï¡Êè°ü£¨Ê¹ÓÃ PackageManager API ºÍÍâ²¿Î»ÖÃ£©
+        /// å®‰è£…ç¨€ç–åŒ…ï¼ˆä½¿ç”¨ PackageManager API å’Œå¤–éƒ¨ä½ç½®ï¼‰
         /// </summary>
         public async Task InstallSparsePackageAsync(string msixPath, string externalLocation)
         {
-            Console.WriteLine("¿ªÊ¼°²×°Ï¡Êè°ü...");
-            Console.WriteLine($"°üÂ·¾¶: {msixPath}");
-            Console.WriteLine($"Íâ²¿³ÌĞòÎ»ÖÃ: {externalLocation}");
+            Console.WriteLine("å¼€å§‹å®‰è£…ç¨€ç–åŒ…...");
+            Console.WriteLine($"åŒ…è·¯å¾„: {msixPath}");
+            Console.WriteLine($"å¤–éƒ¨ç¨‹åºä½ç½®: {externalLocation}");
 
             if (!File.Exists(msixPath))
             {
-                throw new FileNotFoundException($"MSIX °üÎÄ¼ş²»´æÔÚ: {msixPath}");
+                throw new FileNotFoundException($"MSIX åŒ…æ–‡ä»¶ä¸å­˜åœ¨: {msixPath}");
             }
 
             if (!Directory.Exists(externalLocation))
             {
-                throw new DirectoryNotFoundException($"Íâ²¿³ÌĞòÄ¿Â¼²»´æÔÚ: {externalLocation}");
+                throw new DirectoryNotFoundException($"å¤–éƒ¨ç¨‹åºç›®å½•ä¸å­˜åœ¨: {externalLocation}");
             }
 
-            // ´Ó MSIX »ñÈ¡°üĞÅÏ¢
+            // ä» MSIX è·å–åŒ…ä¿¡æ¯
             var (packageName, publisher, version) = ManifestHelper.GetPackageInfoFromMsix(msixPath);
-            Console.WriteLine($"°üÃû: {packageName}");
-            Console.WriteLine($"·¢²¼Õß: {publisher}");
-            Console.WriteLine($"°æ±¾: {version}");
+            Console.WriteLine($"åŒ…å: {packageName}");
+            Console.WriteLine($"å‘å¸ƒè€…: {publisher}");
+            Console.WriteLine($"ç‰ˆæœ¬: {version}");
 
-            // ¼ì²éÊÇ·ñÒÑ°²×°Í¬Ãû°ü
+            // æ£€æŸ¥æ˜¯å¦å·²å®‰è£…åŒååŒ…
             try
             {
                 await UninstallExistingPackageAsync(packageName);
             }
             catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine($"? ¼ì²éÒÑ°²×°°üÊ±³ö´í: {ex.Message}"); Console.ResetColor();
+                Console.WriteLine($"âš  æ£€æŸ¥å·²å®‰è£…åŒ…æ—¶å‡ºé”™: {ex.Message}");
             }
 
             await Task.Run(() =>
@@ -361,14 +370,14 @@ namespace MsixTool.Services
 
                     PackageManager packageManager = new PackageManager();
 
-                    // ÉùÃ÷Ê¹ÓÃÍâ²¿Î»ÖÃ
+                    // å£°æ˜ä½¿ç”¨å¤–éƒ¨ä½ç½®
                     var options = new AddPackageOptions();
                     options.ExternalLocationUri = locationUri;
 
-                    Console.WriteLine("ÕıÔÚ²¿ÊğÏ¡Êè°ü...");
+                    Console.WriteLine("æ­£åœ¨éƒ¨ç½²ç¨€ç–åŒ…...");
                     var deploymentOperation = packageManager.AddPackageByUriAsync(packageUri, options);
 
-                    // µÈ´ı²Ù×÷Íê³É
+                    // ç­‰å¾…æ“ä½œå®Œæˆ
                     var opCompletedEvent = new System.Threading.ManualResetEvent(false);
                     deploymentOperation.Completed = (depProgress, status) => { opCompletedEvent.Set(); };
                     opCompletedEvent.WaitOne();
@@ -377,17 +386,17 @@ namespace MsixTool.Services
                     {
                         var errorCode = deploymentOperation.ErrorCode;
                         var errorText = deploymentOperation.GetResults().ErrorText;
-                        throw new InvalidOperationException($"Ï¡Êè°ü°²×°Ê§°Ü: ´íÎó´úÂë 0x{errorCode.HResult:X8}, {errorText}");
+                        throw new InvalidOperationException($"ç¨€ç–åŒ…å®‰è£…å¤±è´¥: é”™è¯¯ä»£ç  0x{errorCode.HResult:X8}, {errorText}");
                     }
 
                     if (deploymentOperation.Status != Windows.Foundation.AsyncStatus.Completed)
                     {
-                        throw new InvalidOperationException($"Ï¡Êè°ü°²×°Ê§°Ü: ×´Ì¬ {deploymentOperation.Status}");
+                        throw new InvalidOperationException($"ç¨€ç–åŒ…å®‰è£…å¤±è´¥: çŠ¶æ€ {deploymentOperation.Status}");
                     }
 
-                    Console.WriteLine("? Ï¡Êè°ü°²×°³É¹¦");
+                    Console.WriteLine("âœ“ ç¨€ç–åŒ…å®‰è£…æˆåŠŸ");
                     
-                    // ±£´æÍâ²¿³ÌĞòÂ·¾¶µ½ÅäÖÃ
+                    // ä¿å­˜å¤–éƒ¨ç¨‹åºè·¯å¾„åˆ°é…ç½®
                     ConfigManager.SaveSparsePackagePath(publisher, packageName, externalLocation);
                     
                     try
@@ -396,18 +405,18 @@ namespace MsixTool.Services
                     }
                     catch (Exception iconEx)
                     {
-                        Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine($"? Í¼±ê»º´æË¢ĞÂÊ§°Ü: {iconEx.Message}"); Console.ResetColor();
+                        Console.WriteLine($"âš  å›¾æ ‡ç¼“å­˜åˆ·æ–°å¤±è´¥: {iconEx.Message}");
                     }
                 }
                 catch (Exception ex)
                 {
-                    throw new InvalidOperationException($"°²×°Ê§°Ü: {ex.Message}", ex);
+                    throw new InvalidOperationException($"å®‰è£…å¤±è´¥: {ex.Message}", ex);
                 }
             });
         }
 
         /// <summary>
-        /// Ğ¶ÔØÒÑ°²×°µÄ°ü£¨Èç¹û´æÔÚ£©
+        /// å¸è½½å·²å®‰è£…çš„åŒ…ï¼ˆå¦‚æœå­˜åœ¨ï¼‰
         /// </summary>
         private async Task UninstallExistingPackageAsync(string packageName)
         {
@@ -417,19 +426,19 @@ namespace MsixTool.Services
             if (findSuccess && !string.IsNullOrWhiteSpace(findOutput))
             {
                 var fullPackageName = findOutput.Trim();
-                Console.WriteLine($"·¢ÏÖÒÑ°²×°µÄ°ü: {fullPackageName}");
-                Console.WriteLine("ÕıÔÚĞ¶ÔØ¾É°æ±¾...");
+                Console.WriteLine($"å‘ç°å·²å®‰è£…çš„åŒ…: {fullPackageName}");
+                Console.WriteLine("æ­£åœ¨å¸è½½æ—§ç‰ˆæœ¬...");
 
                 var removeCommand = $"Remove-AppxPackage -Package '{fullPackageName}'";
                 var (success, output, error) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{removeCommand}\"");
 
                 if (success)
                 {
-                    Console.WriteLine("? ¾É°æ±¾ÒÑĞ¶ÔØ");
+                    Console.WriteLine("âœ“ æ—§ç‰ˆæœ¬å·²å¸è½½");
                 }
                 else
                 {
-                    Console.ForegroundColor = ConsoleColor.Yellow; Console.WriteLine($"? Ğ¶ÔØ¾É°æ±¾Ê§°Ü: {error}"); Console.ResetColor();
+                    Console.WriteLine($"âš  å¸è½½æ—§ç‰ˆæœ¬å¤±è´¥: {error}");
                 }
             }
         }
