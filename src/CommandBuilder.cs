@@ -184,8 +184,16 @@ namespace MsixTool.Commands
             {
                 try
                 {
+                    if (string.IsNullOrWhiteSpace(src))
+                    {
+                        PrintError("必须提供 --src 参数 (MSIX 包路径)");
+                        Console.WriteLine("用法: msixtool sign --src <包路径> --cert <证书路径> [--password <密码>]");
+                        Environment.Exit(1);
+                        return;
+                    }
+
                     var packService = new PackageService();
-                    await packService.SignPackageAsync(src, cert, password);
+                    await packService.SignPackageAsync(src!, cert, password);
                 }
                 catch (Exception ex)
                 {
@@ -290,7 +298,7 @@ namespace MsixTool.Commands
                             try
                             {
                                 var fileInfo = new FileInfo(finalMsixPath);
-                                var timestamp = DateTime.Now.ToString("yyyyMMddHHmm");
+                                var timestamp = BackupConstants.GenerateTimestamp();
                                 var nameWithoutExt = Path.GetFileNameWithoutExtension(finalMsixPath);
                                 var extension = Path.GetExtension(finalMsixPath);
                                 var backupName = $"{nameWithoutExt}_{timestamp}{extension}";
@@ -541,7 +549,7 @@ namespace MsixTool.Commands
                             try
                             {
                                 var fileInfo = new FileInfo(finalMsixPath);
-                                var timestamp = DateTime.Now.ToString("yyyyMMddHHmm");
+                                var timestamp = BackupConstants.GenerateTimestamp();
                                 var nameWithoutExt = Path.GetFileNameWithoutExtension(finalMsixPath);
                                 var extension = Path.GetExtension(finalMsixPath);
                                 var backupName = $"{nameWithoutExt}_{timestamp}{extension}";
