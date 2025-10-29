@@ -127,8 +127,8 @@ namespace MsixTool.Commands
                 aliases: new[] { "--publisher", "-p" },
                 description: "发布者DN，例如 'CN=MyCompany'"
             );
-            var srcOption = new Option<string?>(
-                aliases: new[] { "--src", "-s" },
+            var destOption = new Option<string?>(
+                aliases: new[] { "--dest", "-d" },
                 description: "保存证书的目录路径"
             );
             var passwordOption = new Option<string?>(
@@ -137,10 +137,10 @@ namespace MsixTool.Commands
             );
 
             makeCertCommand.AddOption(publisherOption);
-            makeCertCommand.AddOption(srcOption);
+            makeCertCommand.AddOption(destOption);
             makeCertCommand.AddOption(passwordOption);
 
-            makeCertCommand.SetHandler(async (publisher, src, password) =>
+            makeCertCommand.SetHandler(async (publisher, dest, password) =>
             {
                 try
                 {
@@ -152,14 +152,14 @@ namespace MsixTool.Commands
                     }
 
                     var certService = new CertificateService();
-                    await certService.CreateCertificateAsync(publisher, src, password);
+                    await certService.CreateCertificateAsync(publisher, dest, password);
                 }
                 catch (Exception ex)
                 {
                     PrintError(ex.Message);
                     Environment.Exit(1);
                 }
-            }, publisherOption, srcOption, passwordOption);
+            }, publisherOption, destOption, passwordOption);
 
             return makeCertCommand;
         }
@@ -374,7 +374,7 @@ namespace MsixTool.Commands
                     finally
                     {
                         // 清理临时打包目录
-                        if (Directory.Exists(tempPackDir))
+                        if (tempPackDir != null && Directory.Exists(tempPackDir))
                         {
                             try
                             {
@@ -492,7 +492,7 @@ namespace MsixTool.Commands
             );
             var destOption = new Option<string?>(
                 aliases: new[] { "--dest", "-d" },
-                description: "外部程序路径（必填，用于创建占位符）"
+                description: "外部程序路径（可选，提供时会创建占位符）"
             );
 
             packSignCommand.AddOption(srcOption);
@@ -505,48 +505,57 @@ namespace MsixTool.Commands
             {
                 try
                 {
-                    if (string.IsNullOrEmpty(dest))
-                    {
-                        PrintError("必须指定 --dest 参数（可执行程序路径）");
-                        Console.WriteLine("用法: msixtool packandsign --dest <exe路径> [其他选项]");
-                        Environment.Exit(1);
-                        return;
-                    }
-
                     // 获取清单路径
                     var sourcePath = src ?? Environment.CurrentDirectory;
                     var manifestPath = ManifestHelper.FindManifestPath(sourcePath);
                     var manifestDir = Path.GetDirectoryName(manifestPath) ?? sourcePath;
 
-                    // 处理稀疏包：创建临时打包目录
-                    Console.WriteLine($"\n正在准备稀疏包...");
-                    Console.WriteLine($"外部程序目录: {dest}");
-                    
-                    var tempPackDir = Path.Combine(Path.GetTempPath(), $"MsixSparse_{Guid.NewGuid():N}");
-                    Directory.CreateDirectory(tempPackDir);
-                    Console.WriteLine($"临时打包目录: {tempPackDir}");
+                    string packDir;
+                    string? tempPackDir = null;
+
+                    // 如果提供了 dest，创建临时打包目录并复制资源+创建占位符
+                    if (!string.IsNullOrEmpty(dest))
+                    {
+                        Console.WriteLine($"\n正在准备稀疏包...");
+                        Console.WriteLine($"外部程序目录: {dest}");
+                        
+                        tempPackDir = Path.Combine(Path.GetTempPath(), $"MsixSparse_{Guid.NewGuid():N}");
+                        Directory.CreateDirectory(tempPackDir);
+                        Console.WriteLine($"临时打包目录: {tempPackDir}");
+                        packDir = tempPackDir;
+                    }
+                    else
+                    {
+                        // 不提供 dest，直接使用源目录打包（假设已包含所有必要文件）
+                        Console.WriteLine($"\n使用源目录直接打包: {manifestDir}");
+                        packDir = manifestDir;
+                    }
 
                     try
                     {
-                        // 复制清单文件
-                        File.Copy(manifestPath, Path.Combine(tempPackDir, "AppxManifest.xml"), true);
-                        
-                        // 获取并复制资源
-                        var resources = ResourceHelper.GetReferencedResources(manifestPath);
-                        Console.WriteLine($"检测到 {resources.Count} 个资源文件需要打包");
-                        ResourceHelper.CopyResourcesToDestination(manifestDir, tempPackDir, resources, showMessage: false);
-                        
-                        // 创建占位符exe
-                        var exeName = Path.GetFileName(dest);
-                        var placeholderExePath = Path.Combine(tempPackDir, exeName);
-                        File.WriteAllBytes(placeholderExePath, new byte[] { 0x4D, 0x5A });
-                        Console.WriteLine($"✓ 已创建占位符程序: {exeName}");
+                        // 如果使用临时目录，需要复制资源和创建占位符
+                        if (tempPackDir != null && !string.IsNullOrEmpty(dest))
+                        {
+                            // 复制清单文件
+                            File.Copy(manifestPath, Path.Combine(tempPackDir, "AppxManifest.xml"), true);
+                            
+                            // 获取并复制资源
+                            var resources = ResourceHelper.GetReferencedResources(manifestPath);
+                            Console.WriteLine($"检测到 {resources.Count} 个资源文件需要打包");
+                            ResourceHelper.CopyResourcesToDestination(manifestDir, tempPackDir, resources, showMessage: false);
+                            
+                            // 创建占位符exe
+                            var exeName = Path.GetFileName(dest);
+                            var placeholderExePath = Path.Combine(tempPackDir, exeName);
+                            File.WriteAllBytes(placeholderExePath, new byte[] { 0x4D, 0x5A });
+                            Console.WriteLine($"✓ 已创建占位符程序: {exeName}");
+                        }
 
                         // 打包
                         Console.WriteLine();
                         Console.WriteLine("======== 第1步: 打包 ========");
                         var packService = new PackageService();
-                        var msixPath = await packService.PackSparsePackageAsync(tempPackDir, name);
+                        var msixPath = await packService.PackSparsePackageAsync(packDir, name);
                         Console.WriteLine($"✓ MSIX 包已创建: {msixPath}");
                         
                         // 移动到目标目录

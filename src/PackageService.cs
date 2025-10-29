@@ -242,7 +242,7 @@ namespace MsixTool.Services
             try
             {
                 var fileInfo = new FileInfo(filePath);
-                var timestamp = fileInfo.CreationTime.ToString("yyyy-MM-dd_HH-mm");
+                var timestamp = BackupConstants.GenerateTimestamp();
                 var directory = Path.GetDirectoryName(filePath)!;
                 var nameWithoutExt = Path.GetFileNameWithoutExtension(filePath);
                 var extension = Path.GetExtension(filePath);

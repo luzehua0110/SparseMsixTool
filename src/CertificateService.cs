@@ -124,9 +124,27 @@ namespace MsixTool.Services
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"警告: 证书安装到受信任根失败: {ex.Message}");
-                    Console.WriteLine("您可能需要手动运行以下命令安装证书:");
-                    Console.WriteLine($"  Import-PfxCertificate -FilePath \"{certPath}\" -CertStoreLocation Cert:\\LocalMachine\\Root -Password (ConvertTo-SecureString \"{password}\" -AsPlainText -Force)");
+                    Console.WriteLine();
+                    Console.WriteLine($"⚠ 警告: 证书自动安装失败");
+                    if (ex.Message.Contains("拒绝访问") || ex.Message.Contains("Access is denied"))
+                    {
+                        Console.WriteLine("原因: 需要管理员权限才能安装证书到受信任的根证书颁发机构");
+                        Console.WriteLine();
+                        Console.WriteLine("请选择以下任一方式手动安装证书:");
+                        Console.WriteLine("  方式1（推荐）: 双击证书文件手动安装");
+                        Console.WriteLine($"     - 证书路径: {certPath}");
+                        Console.WriteLine("     - 密码: " + password);
+                        Console.WriteLine("     - 存储位置: 本地计算机 -> 受信任的根证书颁发机构");
+                        Console.WriteLine();
+                        Console.WriteLine("  方式2: 以管理员权限运行 PowerShell 执行:");
+                        Console.WriteLine($"     Import-PfxCertificate -FilePath \"{certPath}\" -CertStoreLocation Cert:\\LocalMachine\\Root -Password (ConvertTo-SecureString \"{password}\" -AsPlainText -Force)");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"原因: {ex.Message}");
+                        Console.WriteLine($"请手动安装证书: {certPath}");
+                        Console.WriteLine($"证书密码: {password}");
+                    }
                 }
             }
 
