@@ -87,7 +87,10 @@ publish/
 publish-*/
 
 # Release packages
+# 忽略所有自动打包生成的ZIP
 *.zip
+# 可选：如果未来需要保留手动上传的 docs 压缩包，可在下方精确排除特定目录
+# !docs/**/*.zip
 
 # Temporary files
 *.etl
