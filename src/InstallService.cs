@@ -18,15 +18,31 @@ namespace MsixTool.Services
                 throw new FileNotFoundException($"MSIX 包文件不存在: {msixPath}");
             }
 
-            // 检查并卸载已安装的同名包
+            // 解析包信息
+            string parsedPackageName = string.Empty;
             try
             {
-                var (pkgName, _, _) = ManifestHelper.GetPackageInfoFromMsix(msixPath);
-                await UninstallExistingPackageAsync(pkgName);
+                var (pkgName, publisher, version) = ManifestHelper.GetPackageInfoFromMsix(msixPath);
+                parsedPackageName = pkgName;
+                Console.WriteLine($"解析包信息 -> 名称: {pkgName}, 发布者: {publisher}, 版本: {version}");
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠ 检查已安装包时出错: {ex.Message}");
+                Console.WriteLine($"⚠ 解析 MSIX 包信息失败: {ex.Message}");
+            }
+
+            // 如果成功解析到包名则尝试卸载旧版本
+            if (!string.IsNullOrEmpty(parsedPackageName))
+            {
+                Console.WriteLine($"检查是否已安装同名包: {parsedPackageName}");
+                try
+                {
+                    await UninstallExistingPackageAsync(parsedPackageName);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠ 自动卸载旧版本时出错(忽略继续): {ex.Message}");
+                }
             }
 
             // 如果未指定 destPath，尝试从配置读取
