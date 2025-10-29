@@ -54,6 +54,7 @@ msixtool uninstall --name "MyApp_1.0.0.0_x64__8wekyb3d8bbwe"
 | `uninstall` | 卸载已安装的包 | `msixtool uninstall --name PackageName` |
 | `makecert` | 创建自签名证书 | `msixtool makecert --publisher "CN=Company"` |
 | `packandinstall` | 打包并安装 | `msixtool packandinstall --source . --manifest manifest.xml` |
+| `--no-auto-uninstall`(选项) | 禁用自动卸载旧版本 | `msixtool install --src app.msix --no-auto-uninstall` |
 | `packandsign` | 打包并签名 | `msixtool packandsign --source . --manifest manifest.xml` |
 | `find` | 查找已安装的包 | `msixtool find --name MyApp` |
 | `findcert` | 查找证书 | `msixtool findcert --subject "CN=Company"` |
@@ -125,6 +126,18 @@ msixtool pack
 MyApp_1.0.0.0.msix -> MyApp_1.0.0.0_2025-10-28_18-30-00.msix
 ```
 
+### 自动卸载与禁用
+默认行为是安装前自动卸载同名已安装包，避免“注册失败”或版本冲突。
+如需保留旧版本以便对比，可使用 `--no-auto-uninstall`：
+```powershell
+msixtool install --src MyApp_1.0.0.0.msix --no-auto-uninstall
+```
+
+在一键打包安装命令中也可使用：
+```powershell
+msixtool packandinstall --src . --dest C:\MyApp\MyApp.exe --no-auto-uninstall
+```
+
 ## 🛠️ 构建
 
 ```powershell
@@ -141,6 +154,26 @@ dotnet publish -c Release -r win-x64 --self-contained
 # 或使用提供的脚本
 .\build.ps1
 ```
+
+## ✅ 测试
+
+项目包含基础单元测试，覆盖以下功能：
+- 备份时间戳格式 (BackupConstants)
+- 清单解析 (ManifestHelper)
+- 资源引用与 Assets 自动包含 (ResourceHelper)
+
+运行测试：
+```powershell
+dotnet test
+```
+
+## 🤖 CI 持续集成
+
+已配置 GitHub Actions (`.github/workflows/ci.yml`)：
+- Push / PR 到 main 分支自动触发
+- 步骤：Checkout -> Restore -> Build -> Test -> Publish (Native AOT) -> 上传构建产物
+
+你可以在 GitHub 的 Actions 选项卡查看执行状态与历史记录。
 
 ## 📝 版本历史
 

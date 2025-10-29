@@ -65,23 +65,28 @@ namespace MsixTool.Commands
                 aliases: new[] { "--dest", "-d" },
                 description: "外部程序路径（稀疏包必填）"
             );
+            var noAutoUninstallOption = new Option<bool>(
+                aliases: new[] { "--no-auto-uninstall" },
+                description: "不自动卸载已安装的同名包"
+            );
 
             installCommand.AddOption(srcOption);
             installCommand.AddOption(destOption);
+            installCommand.AddOption(noAutoUninstallOption);
 
-            installCommand.SetHandler(async (src, dest) =>
+            installCommand.SetHandler(async (src, dest, noAuto) =>
             {
                 try
                 {
                     var installService = new InstallService();
-                    await installService.InstallPackageAsync(src, null, dest);
+                    await installService.InstallPackageAsync(src, null, dest, autoUninstall: !noAuto);
                 }
                 catch (Exception ex)
                 {
                     PrintError(ex.Message);
                     Environment.Exit(1);
                 }
-            }, srcOption, destOption);
+            }, srcOption, destOption, noAutoUninstallOption);
 
             return installCommand;
         }
@@ -229,14 +234,19 @@ namespace MsixTool.Commands
                 aliases: new[] { "--dest", "-d" },
                 description: "外部程序路径（必填）"
             );
+            var noAutoUninstallOption = new Option<bool>(
+                aliases: new[] { "--no-auto-uninstall" },
+                description: "不自动卸载已安装的同名包"
+            );
 
             packInstallCommand.AddOption(srcOption);
             packInstallCommand.AddOption(nameOption);
             packInstallCommand.AddOption(certOption);
             packInstallCommand.AddOption(passwordOption);
             packInstallCommand.AddOption(destOption);
+            packInstallCommand.AddOption(noAutoUninstallOption);
 
-            packInstallCommand.SetHandler(async (src, name, cert, password, dest) =>
+            packInstallCommand.SetHandler(async (src, name, cert, password, dest, noAuto) =>
             {
                 try
                 {
@@ -352,7 +362,7 @@ namespace MsixTool.Commands
                         Console.WriteLine();
                         Console.WriteLine("======== 第5步: 安装稀疏包 ========");
                         var installService = new InstallService();
-                        await installService.InstallSparsePackageAsync(msixPath, dest);
+                        await installService.InstallSparsePackageAsync(msixPath, dest, autoUninstall: !noAuto);
 
                         Console.WriteLine();
                         Console.WriteLine("========================================");
@@ -382,7 +392,7 @@ namespace MsixTool.Commands
                     PrintError(ex.Message);
                     Environment.Exit(1);
                 }
-            }, srcOption, nameOption, certOption, passwordOption, destOption);
+            }, srcOption, nameOption, certOption, passwordOption, destOption, noAutoUninstallOption);
 
             return packInstallCommand;
         }

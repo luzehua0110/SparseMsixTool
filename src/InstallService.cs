@@ -6,7 +6,7 @@ namespace MsixTool.Services
 {
     public class InstallService
     {
-        public async Task InstallPackageAsync(string? sourcePath, string? packageName, string? destPath)
+    public async Task InstallPackageAsync(string? sourcePath, string? packageName, string? destPath, bool autoUninstall = true)
         {
             Console.WriteLine("开始安装 MSIX 包...");
 
@@ -32,7 +32,7 @@ namespace MsixTool.Services
             }
 
             // 如果成功解析到包名则尝试卸载旧版本
-            if (!string.IsNullOrEmpty(parsedPackageName))
+            if (autoUninstall && !string.IsNullOrEmpty(parsedPackageName))
             {
                 Console.WriteLine($"检查是否已安装同名包: {parsedPackageName}");
                 try
@@ -345,7 +345,7 @@ namespace MsixTool.Services
         /// <summary>
         /// 安装稀疏包（使用 PackageManager API 和外部位置）
         /// </summary>
-        public async Task InstallSparsePackageAsync(string msixPath, string externalLocation)
+    public async Task InstallSparsePackageAsync(string msixPath, string externalLocation, bool autoUninstall = true)
         {
             Console.WriteLine("开始安装稀疏包...");
             Console.WriteLine($"包路径: {msixPath}");
@@ -368,13 +368,16 @@ namespace MsixTool.Services
             Console.WriteLine($"版本: {version}");
 
             // 检查是否已安装同名包
-            try
+            if (autoUninstall)
             {
-                await UninstallExistingPackageAsync(packageName);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"⚠ 检查已安装包时出错: {ex.Message}");
+                try
+                {
+                    await UninstallExistingPackageAsync(packageName);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠ 检查已安装包时出错: {ex.Message}");
+                }
             }
 
             await Task.Run(() =>

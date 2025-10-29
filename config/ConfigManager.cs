@@ -40,15 +40,17 @@ namespace MsixTool.Config
     public static class ConfigManager
     {
         private static readonly string ConfigPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "config", "app.config.json");
-        private static AppConfig? _config;
+    // 使用非可空字段，初始化时保证赋值，避免序列化时的可空类型不匹配警告
+    private static AppConfig _config = new AppConfig();
 
         public static AppConfig GetConfig()
         {
-            if (_config == null)
+            if (_config.Certificates.Count == 0 && _config.SparsePackagePaths.Count == 0 && string.IsNullOrEmpty(_config.DefaultCertificatePath))
             {
+                // 如果尚未真正加载（字段是默认初始化的空配置），尝试加载
                 LoadConfig();
             }
-            return _config!;
+            return _config;
         }
 
         private static void LoadConfig()
@@ -58,7 +60,8 @@ namespace MsixTool.Config
                 if (File.Exists(ConfigPath))
                 {
                     var json = File.ReadAllText(ConfigPath);
-                    _config = JsonSerializer.Deserialize(json, AppJsonContext.Default.AppConfig) ?? new AppConfig();
+                    var loaded = JsonSerializer.Deserialize(json, AppJsonContext.Default.AppConfig);
+                    _config = loaded ?? new AppConfig();
                     
                     // 验证配置中的证书路径
                     ValidateAndCleanupConfig();
@@ -78,7 +81,7 @@ namespace MsixTool.Config
 
         private static void ValidateAndCleanupConfig()
         {
-            if (_config == null) return;
+            // _config 已保证非空
 
             var invalidCerts = new List<string>();
 
@@ -116,7 +119,7 @@ namespace MsixTool.Config
                     Directory.CreateDirectory(configDir!);
                 }
 
-                var json = JsonSerializer.Serialize(_config, AppJsonContext.Default.AppConfig);
+                var json = JsonSerializer.Serialize<AppConfig>(_config, AppJsonContext.Default.AppConfig);
                 File.WriteAllText(ConfigPath, json);
             }
             catch (Exception ex)
