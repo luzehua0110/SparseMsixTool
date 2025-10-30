@@ -13,7 +13,7 @@
     <InformationalVersion>2.1.0</InformationalVersion>
     <!-- 排除测试目录 -->
     <DefaultItemExcludes>$(DefaultItemExcludes);tests/**</DefaultItemExcludes>
-    <!-- Native AOT 编译 - 无需.NET Runtime -->
+    <!-- Native AOT 编译 - 默认开启，无需.NET Runtime -->
     <PublishAot>true</PublishAot>
     <InvariantGlobalization>false</InvariantGlobalization>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
