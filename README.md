@@ -4,204 +4,230 @@
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://www.microsoft.com/windows)
 
-MsixTool 是一个强大的命令行工具,用于创建、签名和安装 MSIX 稀疏包。支持自签名证书管理、自动依赖检查、配置记忆等功能,让 MSIX 包开发变得简单高效。
+强大的 MSIX 稀疏包命令行工具，支持打包、签名、安装、卸载和证书管理。Native AOT 编译，无需 .NET 运行时，开箱即用。
 
 ## ✨ 核心特性
 
-- 🎯 **一键打包**: 快速创建 MSIX 稀疏包
-- ✍️ **证书管理**: 自动生成和管理自签名证书
-- 📦 **智能安装**: 自动检测和安装依赖,支持自动卸载旧版本
-- 🔍 **包查询**: 快速查找和管理已安装的 MSIX 包
-- 💾 **配置记忆**: 自动保存常用路径,提升工作效率
-- 🎨 **彩色输出**: 红色错误、黄色警告,信息一目了然
-- 💿 **单文件发布**: Native AOT 编译,无需 .NET 运行时
+- 🎯 **一键操作**: `packandinstall` 完成打包、签名、安装全流程
+- ✍️ **智能证书**: 自动创建/查找/安装自签名证书
+- 📦 **配置记忆**: 自动保存路径，下次使用无需重复输入
+- 🔄 **自动升级**: 安装前自动卸载旧版本（可选 `--no-auto-uninstall`）
+- 🎨 **友好输出**: 彩色提示（红色错误/黄色警告），清晰直观
+- 💿 **Native AOT**: 单文件发布，14.8MB，无需 .NET 运行时
+- 🖼️ **图标刷新**: 卸载后自动清理图标缓存
 
 ## 📥 快速开始
 
 ### 安装
 
-从 [Releases](https://github.com/luzehua0110/msixtool/releases) 下载最新版本,解压即用。
+从 [Releases](https://github.com/luzehua0110/msixtool/releases) 下载最新版本，解压即用。
 
-### 基本使用
+### 5分钟上手
 
 ```powershell
-# 创建 MSIX 包
-msixtool pack --source "C:\MyApp" --manifest "AppxManifest.xml"
+# 1. 创建自签名证书（首次使用）
+msixtool makecert --publisher "CN=MyCompany" --password "pass123"
 
-# 创建自签名证书
-msixtool makecert --publisher "CN=MyCompany" --password "MyPassword123"
+# 2. 一键打包、签名并安装稀疏包
+msixtool packandinstall --src "C:\MyApp" --dest "C:\MyApp\MyApp.exe"
 
-# 签名 MSIX 包
-msixtool sign --package "MyApp.msix" --cert "MyCert.pfx" --password "MyPassword123"
+# 3. 查找已安装的包
+msixtool find MyApp
 
-# 一键打包并安装
-msixtool packandinstall --source "C:\MyApp" --manifest "AppxManifest.xml"
-
-# 查找已安装的包
-msixtool find --name "MyApp"
-
-# 卸载包
-msixtool uninstall --name "MyApp_1.0.0.0_x64__8wekyb3d8bbwe"
+# 4. 卸载包
+msixtool uninstall MyApp
 ```
 
-## 📋 命令列表
+## 📋 命令速查
+
+### 核心命令
 
 | 命令 | 说明 | 示例 |
 |------|------|------|
-| `pack` | 创建 MSIX 包 | `msixtool pack --source . --manifest manifest.xml` |
-| `sign` | 签名 MSIX 包 | `msixtool sign --package app.msix --cert cert.pfx` |
-| `install` | 安装 MSIX 包 | `msixtool install --package app.msix` |
-| `uninstall` | 卸载已安装的包 | `msixtool uninstall --name PackageName` |
-| `makecert` | 创建自签名证书 | `msixtool makecert --publisher "CN=Company"` |
-| `packandinstall` | 打包并安装 | `msixtool packandinstall --source . --manifest manifest.xml` |
-| `--no-auto-uninstall`(选项) | 禁用自动卸载旧版本 | `msixtool install --src app.msix --no-auto-uninstall` |
-| `packandsign` | 打包并签名 | `msixtool packandsign --source . --manifest manifest.xml` |
-| `find` | 查找已安装的包 | `msixtool find --name MyApp` |
-| `findcert` | 查找证书 | `msixtool findcert --subject "CN=Company"` |
-| `delcert` | 删除证书 | `msixtool delcert --thumbprint ABC123...` |
-| `deps` | 检查依赖 | `msixtool deps` |
+| **packandinstall** | 打包+签名+安装（一步到位） | `msixtool packandinstall --dest C:\App\app.exe` |
+| **packandsign** | 打包+签名（不安装） | `msixtool packandsign --src . --dest C:\App\app.exe` |
+| **install** | 安装 MSIX 包 | `msixtool install --src app.msix --dest C:\App\app.exe` |
+| **uninstall** | 卸载包 | `msixtool uninstall MyApp` |
+| **find** | 查找已安装的包 | `msixtool find MyApp` |
 
-## 🔧 系统要求
+### 证书管理
 
-- **操作系统**: Windows 10/11 (1809 或更高版本)
-- **依赖**: Windows SDK (自动检测并提示安装)
-- **架构**: x64
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| **makecert** | 创建自签名证书 | `msixtool makecert --publisher "CN=Company" --password pass123` |
+| **sign** | 为包签名 | `msixtool sign --src app.msix --cert cert.pfx --password pass123` |
+| **findcert** | 查找证书 | `msixtool findcert MyCompany` |
+| **delcert** | 删除证书 | `msixtool delcert C:\cert.pfx` |
 
-## 📖 详细文档
+### 其他工具
 
-- [快速入门](快速入门.md) - 5分钟上手指南
-- [用户使用手册](用户使用手册.md) - 完整功能说明
-- [开发者文档](开发者文档.md) - 开发和构建指南
-- [命令参考](命令参考.md) - 所有命令的详细参数
-- [故障排查指南](故障排查指南.md) - 常见问题解决方案
-- [文档索引](文档索引.md) - 完整文档列表
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| **pack** | 仅打包（不签名） | `msixtool pack --src .` |
+| **deps** | 检查依赖 | `msixtool deps` |
 
-## 🎯 使用场景
+## 🎯 典型场景
 
-### 场景 1: 开发测试
-快速打包应用进行本地测试,无需发布到应用商店。
+### 场景1：快速开发测试
 
 ```powershell
-msixtool packandinstall --source "C:\MyApp\bin\Release" --manifest "AppxManifest.xml"
+# 应用目录结构
+MyApp/
+├── AppxManifest.xml
+├── MyApp.exe
+└── Assets/
+    └── logo.png
+
+# 一键打包安装
+cd MyApp
+msixtool packandinstall --dest MyApp.exe
+
+# 测试完成后卸载
+msixtool uninstall MyApp
 ```
 
-### 场景 2: 企业内部分发
-创建签名的 MSIX 包,通过内网分发给员工。
+### 场景2：企业内部分发
 
 ```powershell
 # 1. 创建企业证书
-msixtool makecert --publisher "CN=MyCompany" --password "SecurePass123"
+msixtool makecert --publisher "CN=MyCompany" --dest C:\Certs --password CompanyPass
 
-# 2. 打包并签名
-msixtool packandsign --source "C:\MyApp" --manifest "manifest.xml" --cert "cert.pfx" --password "SecurePass123"
+# 2. 打包签名（不安装）
+msixtool packandsign --src C:\MyApp --dest C:\MyApp\app.exe --cert C:\Certs\MyCompany.pfx --password CompanyPass
+
+# 3. 分发 MSIX 文件给用户
+# 用户安装：msixtool install --src MyApp_1.0.0.0.msix --dest C:\MyApp\app.exe
 ```
 
-### 场景 3: 版本升级
-自动卸载旧版本并安装新版本。
+### 场景3：自动化CI/CD
 
 ```powershell
-msixtool packandinstall --source "C:\MyApp" --manifest "AppxManifest.xml"
-# 自动检测并卸载旧版本,安装新版本
+# 构建后自动打包（不安装）
+msixtool packandsign --src "$env:BUILD_DIR" --dest "$env:APP_EXE"
+
+# 上传生成的 .msix 到发布平台
 ```
 
-## 🚀 高级功能
+## 🔧 高级功能
 
 ### 配置记忆
-工具会自动记住最后使用的路径,下次使用时可以省略参数:
+
+工具会自动记住上次使用的外部程序路径，下次可省略 `--dest`：
 
 ```powershell
-# 第一次使用
-msixtool pack --source "C:\MyApp" --manifest "AppxManifest.xml"
+# 第一次
+msixtool packandinstall --dest C:\MyApp\app.exe
 
-# 之后可以直接使用
-msixtool pack
+# 之后直接用（自动使用历史路径）
+msixtool packandinstall
 ```
 
-### 自动资源复制
-打包时自动包含 `Assets` 目录下的资源文件,无需手动复制。
+### 证书复用
 
-### 文件备份
-在覆盖现有 MSIX 文件前自动创建带时间戳的备份:
-```
-MyApp_1.0.0.0.msix -> MyApp_1.0.0.0_2025-10-28_18-30-00.msix
-```
+证书和密码会保存到配置文件（`config/app.config.json`），后续自动使用：
 
-### 自动卸载与禁用
-默认行为是安装前自动卸载同名已安装包，避免“注册失败”或版本冲突。
-如需保留旧版本以便对比，可使用 `--no-auto-uninstall`：
 ```powershell
-msixtool install --src MyApp_1.0.0.0.msix --no-auto-uninstall
+# 第一次指定证书
+msixtool packandinstall --cert cert.pfx --password pass123 --dest app.exe
+
+# 之后自动使用配置中的证书
+msixtool packandinstall --dest app.exe
 ```
 
-在一键打包安装命令中也可使用：
-```powershell
-msixtool packandinstall --src . --dest C:\MyApp\MyApp.exe --no-auto-uninstall
+### 文件自动备份
+
+覆盖现有 MSIX 文件前自动备份（时间戳格式 `yyyyMMddHHmm`）：
+```
+MyApp.msix → MyApp_202510291630.msix
 ```
 
-## 🛠️ 构建
+### 参数校验增强
+
+- `--cert` 和 `--password` 必须配套使用
+- `--dest` 可省略时自动从配置读取
+
+## 🔧 系统要求
+
+- **操作系统**: Windows 10/11 (1809+)
+- **依赖**: Windows SDK（工具自动检测并提示安装位置）
+- **架构**: x64
+- **无需 .NET 运行时**
+
+## 📖 详细文档
+
+- [命令参考](命令参考.md) - 所有命令的详细参数
+- [故障排查指南](故障排查指南.md) - 常见问题解决方案
+- [开发者文档](开发者文档.md) - 开发和构建指南
+- [项目架构](项目架构.md) - 技术架构说明
+- [更新日志](更新日志.md) - 版本历史
+
+## 🛠️ 本地构建
+
+### 开发构建
 
 ```powershell
 # 克隆仓库
 git clone https://github.com/luzehua0110/msixtool.git
 cd msixtool
 
-# 编译 (Debug)
+# Debug 编译
 dotnet build -c Debug
 
-# 发布 (Release with Native AOT)
-dotnet publish -c Release -r win-x64 --self-contained
+# 发布 (Native AOT)
+dotnet publish -c Release -r win-x64 --self-contained -p:PublishAot=true
 
-# 或使用提供的脚本
+# 或使用快捷脚本
 .\build.ps1
 ```
 
-## ✅ 测试
+### 打包发布
 
-项目包含基础单元测试，覆盖以下功能：
-- 备份时间戳格式 (BackupConstants)
-- 清单解析 (ManifestHelper)
-- 资源引用与 Assets 自动包含 (ResourceHelper)
+```powershell
+# 生成带时间戳的 zip 和 latest 别名
+powershell -ExecutionPolicy Bypass -File tools/package.ps1 -Aot -LatestAlias
+```
 
-运行测试：
+### 运行测试
+
 ```powershell
 dotnet test
 ```
 
-## 🤖 CI 持续集成
-
-已配置 GitHub Actions (`.github/workflows/ci.yml`)：
-- Push / PR 到 main 分支自动触发
-- 步骤：Checkout -> Restore -> Build -> Test -> Publish (Native AOT) -> 上传构建产物
-
-你可以在 GitHub 的 Actions 选项卡查看执行状态与历史记录。
-
 ## 📝 版本历史
 
+### v2.2.0 (2025-10-30)
+- ✨ 简化命令参数：`uninstall/findcert/delcert` 改为位置参数
+- ✨ 增强配置管理：`--dest` 省略时自动使用历史路径
+- ✨ 强化参数校验：`--cert` 必须配套 `--password`
+- ✨ 优化卸载流程：卸载后验证+强制图标缓存刷新
+- 🐛 修复打包输出包含 `tools` 目录的问题
+- 📝 更新帮助文本：证书参数说明优化
+
 ### v2.1.4 (2025-10-28)
-- ✨ 新增文件备份功能,覆盖前自动创建时间戳备份
-- 🎨 彩色控制台输出,错误红色、警告黄色
+- ✨ 文件自动备份（时间戳格式）
+- 🎨 彩色控制台输出
 - 🐛 Bug 修复和性能优化
 
 查看完整 [更新日志](更新日志.md)
 
 ## 🤝 贡献
 
-欢迎提交 Issue 和 Pull Request!
+欢迎提交 Issue 和 Pull Request！
 
 ## 📄 许可证
 
-本项目采用 [MIT 许可证](LICENSE)。
+[MIT License](LICENSE)
 
 ## 👨‍💻 作者
 
-**luzehua** - [luzehua0110@foxmail.com](mailto:luzehua0110@foxmail.com)
+**luzehua** - luzehua0110@foxmail.com
 
-## 🔗 相关链接
+## 🔗 相关资源
 
-- [MSIX 官方文档](https://docs.microsoft.com/zh-cn/windows/msix/)
-- [Windows 应用 SDK](https://docs.microsoft.com/zh-cn/windows/apps/windows-app-sdk/)
-- [MSIX 打包工具](https://docs.microsoft.com/zh-cn/windows/msix/packaging-tool/tool-overview)
+- [MSIX 官方文档](https://docs.microsoft.com/windows/msix/)
+- [Windows 应用 SDK](https://docs.microsoft.com/windows/apps/windows-app-sdk/)
+- [MSIX 打包工具](https://docs.microsoft.com/windows/msix/packaging-tool/tool-overview)
 
 ---
 
-⭐ 如果这个项目对您有帮助,请给个 Star!
+⭐ 如果这个项目对您有帮助，请给个 Star！
