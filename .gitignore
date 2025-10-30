@@ -3,6 +3,8 @@
 [Dd]ebugPublic/
 [Rr]elease/
 [Rr]eleases/
+# 但保留项目根目录的 releases 发布目录
+!releases/
 x64/
 x86/
 [Ww][Ii][Nn]32/
@@ -89,6 +91,8 @@ publish-*/
 # Release packages
 # 忽略所有自动打包生成的ZIP
 *.zip
+# 但保留 releases 目录中的发布包
+!releases/*.zip
 # 可选：如果未来需要保留手动上传的 docs 压缩包，可在下方精确排除特定目录
 # !docs/**/*.zip
 
