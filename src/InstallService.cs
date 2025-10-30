@@ -114,10 +114,27 @@ namespace MsixTool.Services
                 // 使用 PowerShell 卸载包
                 await UninstallUsingPowerShellAsync(packageName);
                 Console.WriteLine("✓ 包卸载成功");
-                // 刷新图标缓存
+
+                // 验证包是否真正卸载（再次查找确认不存在）
+                Console.WriteLine("验证卸载结果...");
+                var findCommand = $"Get-AppxPackage | Where-Object {{$_.Name -like '*{packageName}*'}} | Select-Object -First 1 -ExpandProperty PackageFullName";
+                var (findSuccess, findOutput, findError) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{findCommand}\"");
+
+                if (findSuccess && !string.IsNullOrWhiteSpace(findOutput))
+                {
+                    Console.WriteLine($"⚠ 警告: 包似乎仍然存在: {findOutput.Trim()}");
+                    Console.WriteLine("卸载可能未完全成功，请手动检查");
+                }
+                else
+                {
+                    Console.WriteLine("✓ 卸载验证通过：包已不存在");
+                }
+
+                // 刷新图标缓存（使用强制模式确保彻底刷新）
                 try
                 {
-                    IconCacheHelper.ClearIconCache();
+                    Console.WriteLine();
+                    IconCacheHelper.ClearIconCache(aggressive: true);
                 }
                 catch (Exception iconEx)
                 {

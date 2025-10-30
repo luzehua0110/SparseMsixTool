@@ -22,9 +22,9 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Publish single-file executable
-Write-Host "Publishing single-file executable..." -ForegroundColor Yellow
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true
+# Publish with Native AOT (不能与 PublishSingleFile 同时使用)
+Write-Host "Publishing with Native AOT..." -ForegroundColor Yellow
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishAot=true
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Publish failed!" -ForegroundColor Red
     Read-Host "Press Enter to exit"
@@ -33,7 +33,7 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host ""
 Write-Host "Build completed successfully!" -ForegroundColor Green
-$publishPath = Join-Path $PSScriptRoot "bin\Release\net6.0\win-x64\publish"
+$publishPath = Join-Path $PSScriptRoot "bin\Release\net8.0\win-x64\publish"
 Write-Host "Executable location: $publishPath\msixtool.exe" -ForegroundColor Blue
 
 Write-Host ""

@@ -35,6 +35,9 @@ namespace MsixTool.Config
 
         [JsonPropertyName("SparsePackagePaths")]
         public Dictionary<string, string> SparsePackagePaths { get; set; } = new();
+
+        [JsonPropertyName("LastExternalAppPath")]
+        public string LastExternalAppPath { get; set; } = string.Empty;
     }
 
     public static class ConfigManager
@@ -167,6 +170,19 @@ namespace MsixTool.Config
             var config = GetConfig();
             var key = $"{publisher}|{packageName}";
             return config.SparsePackagePaths.TryGetValue(key, out var path) ? path : null;
+        }
+
+        public static void SaveLastExternalAppPath(string path)
+        {
+            var config = GetConfig();
+            config.LastExternalAppPath = path;
+            SaveConfig();
+        }
+
+        public static string? GetLastExternalAppPath()
+        {
+            var config = GetConfig();
+            return string.IsNullOrWhiteSpace(config.LastExternalAppPath) ? null : config.LastExternalAppPath;
         }
     }
 }

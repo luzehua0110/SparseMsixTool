@@ -26,9 +26,6 @@
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
   </ItemGroup>
 
-  <!-- 包含tools目录到发布输出 -->
-  <ItemGroup>
-    <None Include="tools\**\*" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
+  <!-- 移除 tools 目录的复制，避免被打进发布包 -->
 
 </Project>

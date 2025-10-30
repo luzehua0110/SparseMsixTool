@@ -19,9 +19,9 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM 发布单文件可执行程序
-echo Publishing single-file executable...
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishTrimmed=true
+REM 发布 Native AOT（不能与 PublishSingleFile 同时使用）
+echo Publishing with Native AOT...
+dotnet publish -c Release -r win-x64 --self-contained true -p:PublishAot=true
 if %errorlevel% neq 0 (
     echo Publish failed!
     pause
@@ -30,10 +30,10 @@ if %errorlevel% neq 0 (
 
 echo.
 echo Build completed successfully!
-echo Executable location: bin\Release\net6.0\win-x64\publish\msixtool.exe
+echo Executable location: bin\Release\net8.0\win-x64\publish\msixtool.exe
 echo.
 echo To add to PATH:
-echo 1. Copy the full path: %~dp0bin\Release\net6.0\win-x64\publish
+echo 1. Copy the full path: %~dp0bin\Release\net8.0\win-x64\publish
 echo 2. Add to System PATH environment variable
 echo 3. Restart command prompt
 echo.

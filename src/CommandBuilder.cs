@@ -1,6 +1,7 @@
 ﻿using System.CommandLine;
 using MsixTool.Services;
 using MsixTool.Utils;
+using MsixTool.Config;
 
 namespace MsixTool.Commands
 {
@@ -55,15 +56,15 @@ namespace MsixTool.Commands
 
         public static Command CreateInstallCommand()
         {
-            var installCommand = new Command("install", "安装msix包");
+            var installCommand = new Command("install", "安装 msix 包 (支持 --dest 省略回退此前使用的外部程序路径)");
             
             var srcOption = new Option<string?>(
                 aliases: new[] { "--src", "-s" },
-                description: "msix包路径"
+                description: "msix 包路径"
             );
             var destOption = new Option<string?>(
                 aliases: new[] { "--dest", "-d" },
-                description: "外部程序路径（稀疏包必填）"
+                description: "外部程序路径（稀疏包需要，可省略则自动使用最近一次成功安装的路径）"
             );
             var noAutoUninstallOption = new Option<bool>(
                 aliases: new[] { "--no-auto-uninstall" },
@@ -78,8 +79,25 @@ namespace MsixTool.Commands
             {
                 try
                 {
+                    // 回退逻辑: 如果未提供 dest, 尝试使用配置中的 LastExternalAppPath
+                    var finalDest = dest;
+                    if (string.IsNullOrWhiteSpace(finalDest))
+                    {
+                        finalDest = ConfigManager.GetLastExternalAppPath();
+                        if (!string.IsNullOrWhiteSpace(finalDest))
+                        {
+                            Console.WriteLine($"使用历史外部程序路径: {finalDest}");
+                        }
+                    }
+
                     var installService = new InstallService();
-                    await installService.InstallPackageAsync(src, null, dest, autoUninstall: !noAuto);
+                    await installService.InstallPackageAsync(src, null, finalDest, autoUninstall: !noAuto);
+
+                    // 安装成功且提供了有效外部路径则保存
+                    if (!string.IsNullOrWhiteSpace(finalDest))
+                    {
+                        ConfigManager.SaveLastExternalAppPath(finalDest);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -95,12 +113,13 @@ namespace MsixTool.Commands
         {
             var uninstallCommand = new Command("uninstall", "卸载msix包");
             
-            var nameOption = new Option<string?>(
-                aliases: new[] { "--name", "-n" },
-                description: "包名称"
+            var nameArg = new Argument<string?>(
+                name: "packageName",
+                description: "包名称（支持模糊匹配）",
+                getDefaultValue: () => null
             );
 
-            uninstallCommand.AddOption(nameOption);
+            uninstallCommand.AddArgument(nameArg);
 
             uninstallCommand.SetHandler(async (name) =>
             {
@@ -114,7 +133,7 @@ namespace MsixTool.Commands
                     PrintError(ex.Message);
                     Environment.Exit(1);
                 }
-            }, nameOption);
+            }, nameArg);
 
             return uninstallCommand;
         }
@@ -174,11 +193,11 @@ namespace MsixTool.Commands
             );
             var certOption = new Option<string?>(
                 aliases: new[] { "--cert", "-c" },
-                description: "证书路径（.pfx文件）"
+                description: "证书路径（.pfx文件），若提供则必须同时提供 --password"
             );
             var passwordOption = new Option<string?>(
                 aliases: new[] { "--password", "-pwd" },
-                description: "证书密码（可选）"
+                description: "证书密码（提供 --cert 时必填）"
             );
 
             signCommand.AddOption(srcOption);
@@ -192,7 +211,16 @@ namespace MsixTool.Commands
                     if (string.IsNullOrWhiteSpace(src))
                     {
                         PrintError("必须提供 --src 参数 (MSIX 包路径)");
-                        Console.WriteLine("用法: msixtool sign --src <包路径> --cert <证书路径> [--password <密码>]");
+                        Console.WriteLine("用法: msixtool sign --src <包路径> [--cert <证书路径> --password <密码>]");
+                        Environment.Exit(1);
+                        return;
+                    }
+
+                    // 校验：提供 --cert 时必须同时提供 --password
+                    if (!string.IsNullOrWhiteSpace(cert) && string.IsNullOrWhiteSpace(password))
+                    {
+                        PrintError("提供 --cert 参数时必须同时提供 --password 参数");
+                        Console.WriteLine("用法: msixtool sign --src <包路径> --cert <证书路径> --password <密码>");
                         Environment.Exit(1);
                         return;
                     }
@@ -212,7 +240,7 @@ namespace MsixTool.Commands
 
         public static Command CreatePackAndInstallCommand()
         {
-            var packInstallCommand = new Command("packandinstall", "打包、签名并安装稀疏包（一步完成）");
+            var packInstallCommand = new Command("packandinstall", "打包、签名并安装稀疏包（支持 --dest 省略使用最近路径）");
             
             var srcOption = new Option<string?>(
                 aliases: new[] { "--src", "-s" },
@@ -224,15 +252,15 @@ namespace MsixTool.Commands
             );
             var certOption = new Option<string?>(
                 aliases: new[] { "--cert", "-c" },
-                description: "证书路径（可选，不提供则自动创建）"
+                description: "证书路径（可选，不提供则使用上次使用的值或自动创建），若提供则必须同时提供 --password"
             );
             var passwordOption = new Option<string?>(
                 aliases: new[] { "--password", "-pwd" },
-                description: "证书密码（可选）"
+                description: "证书密码（提供 --cert 时必填）"
             );
             var destOption = new Option<string?>(
                 aliases: new[] { "--dest", "-d" },
-                description: "外部程序路径（必填）"
+                description: "外部程序路径（可省略，将自动使用最近一次成功安装的路径）"
             );
             var noAutoUninstallOption = new Option<bool>(
                 aliases: new[] { "--no-auto-uninstall" },
@@ -250,9 +278,28 @@ namespace MsixTool.Commands
             {
                 try
                 {
-                    if (string.IsNullOrEmpty(dest))
+                    // 校验：提供 --cert 时必须同时提供 --password
+                    if (!string.IsNullOrWhiteSpace(cert) && string.IsNullOrWhiteSpace(password))
                     {
-                        PrintError("必须指定 --dest 参数（可执行程序路径）");
+                        PrintError("提供 --cert 参数时必须同时提供 --password 参数");
+                        Console.WriteLine("用法: msixtool packandinstall --cert <证书路径> --password <密码> [其他选项]");
+                        Environment.Exit(1);
+                        return;
+                    }
+
+                    // 回退逻辑
+                    var finalDest = dest;
+                    if (string.IsNullOrWhiteSpace(finalDest))
+                    {
+                        finalDest = ConfigManager.GetLastExternalAppPath();
+                        if (!string.IsNullOrWhiteSpace(finalDest))
+                        {
+                            Console.WriteLine($"使用历史外部程序路径: {finalDest}");
+                        }
+                    }
+                    if (string.IsNullOrWhiteSpace(finalDest))
+                    {
+                        PrintError("未提供 --dest 且无历史路径可以回退，必须指定外部程序路径。");
                         Console.WriteLine("用法: msixtool packandinstall --dest <exe路径> [其他选项]");
                         Environment.Exit(1);
                         return;
@@ -265,7 +312,7 @@ namespace MsixTool.Commands
 
                     // 处理稀疏包：创建临时打包目录，只包含清单、资源和占位符exe
                     Console.WriteLine($"\n正在准备稀疏包...");
-                    Console.WriteLine($"外部程序目录: {dest}");
+                    Console.WriteLine($"外部程序目录: {finalDest}");
                     
                     // 创建临时打包目录
                     var tempPackDir = Path.Combine(Path.GetTempPath(), $"MsixSparse_{Guid.NewGuid():N}");
@@ -285,7 +332,7 @@ namespace MsixTool.Commands
                         ResourceHelper.CopyResourcesToDestination(manifestDir, tempPackDir, resources, showMessage: false);
                         
                         // 在临时目录中创建占位符exe（仅用于打包）
-                        var exeName = Path.GetFileName(dest);
+                        var exeName = Path.GetFileName(finalDest);
                         var placeholderExePath = Path.Combine(tempPackDir, exeName);
                         File.WriteAllBytes(placeholderExePath, new byte[] { 0x4D, 0x5A }); // MZ header
                         Console.WriteLine($"✓ 已创建占位符程序: {exeName}");
@@ -298,16 +345,13 @@ namespace MsixTool.Commands
                         Console.WriteLine($"✓ MSIX 包已创建: {msixPath}");
                         
                         // 将 MSIX 移动到源目录的父目录
-                        // 例如: src = C:\MyApp\Pkg_x86 -> 保存到 C:\MyApp\
                         var targetDir = Directory.GetParent(manifestDir)?.FullName ?? manifestDir;
                         var finalMsixPath = Path.Combine(targetDir, Path.GetFileName(msixPath));
                         
-                        // 如果目标位置已存在同名文件，重命名备份
                         if (File.Exists(finalMsixPath))
                         {
                             try
                             {
-                                var fileInfo = new FileInfo(finalMsixPath);
                                 var timestamp = BackupConstants.GenerateTimestamp();
                                 var nameWithoutExt = Path.GetFileNameWithoutExtension(finalMsixPath);
                                 var extension = Path.GetExtension(finalMsixPath);
@@ -319,7 +363,7 @@ namespace MsixTool.Commands
                             catch (Exception ex)
                             {
                                 PrintWarning($"备份现有文件失败: {ex.Message}，将删除旧文件");
-                                File.Delete(finalMsixPath);
+                                try { File.Delete(finalMsixPath); } catch { }
                             }
                         }
                         
@@ -327,63 +371,53 @@ namespace MsixTool.Commands
                         msixPath = finalMsixPath;
                         Console.WriteLine($"✓ MSIX 包已保存到: {msixPath}");
                         
-                        // 第2步: 处理证书（打包成功后再创建/查找证书）
+                        // 第2步: 处理证书
                         Console.WriteLine();
                         Console.WriteLine("======== 第2步: 准备签名证书 ========");
                         string? actualCert = cert;
-                        
                         if (string.IsNullOrEmpty(actualCert))
                         {
                             Console.WriteLine("未提供证书参数，正在查找或创建证书...");
-
-                            // 从清单文件获取 Publisher
                             var publisher = ManifestHelper.GetPublisherFromManifest(manifestPath);
-
-                            // 智能获取或创建证书（会立即安装）
                             var certService = new CertificateService();
                             actualCert = await certService.GetOrCreateCertificateAsync(publisher, sourcePath);
                         }
 
-                        // 第3步: 签名MSIX包（证书已安装）
+                        // 第3步: 签名MSIX包
                         Console.WriteLine();
                         Console.WriteLine("======== 第3步: 签名 ========");
                         await packService.SignPackageAsync(msixPath, actualCert, password);
 
-                        // 第4步: 复制资源到外部程序目录（签名成功后才执行）
+                        // 第4步: 复制资源到外部程序目录
                         Console.WriteLine();
                         Console.WriteLine("======== 第4步: 复制资源到外部程序目录 ========");
-                        var destDir = Path.GetDirectoryName(dest);
-                        if (!string.IsNullOrEmpty(destDir) && resources.Any())
+                        var destDir = Path.GetDirectoryName(finalDest);
+                        if (!string.IsNullOrEmpty(destDir))
                         {
-                            ResourceHelper.CopyResourcesToDestination(manifestDir, destDir, resources, showMessage: true);
+                            ResourceHelper.CopyResourcesToDestination(manifestDir, destDir, resources, showMessage: resources.Any());
                         }
                         
                         // 第5步: 安装稀疏包
                         Console.WriteLine();
                         Console.WriteLine("======== 第5步: 安装稀疏包 ========");
                         var installService = new InstallService();
-                        await installService.InstallSparsePackageAsync(msixPath, dest, autoUninstall: !noAuto);
+                        await installService.InstallSparsePackageAsync(msixPath, finalDest, autoUninstall: !noAuto);
+
+                        // 保存路径供下次回退
+                        ConfigManager.SaveLastExternalAppPath(finalDest);
 
                         Console.WriteLine();
                         Console.WriteLine("========================================");
                         Console.WriteLine("✓ 所有步骤完成！稀疏包已成功安装");
                         Console.WriteLine($"  MSIX 包: {msixPath}");
-                        Console.WriteLine($"  外部程序: {dest}");
+                        Console.WriteLine($"  外部程序: {finalDest}");
                         Console.WriteLine("========================================");
                     }
                     finally
                     {
-                        // 清理临时打包目录
                         if (tempPackDir != null && Directory.Exists(tempPackDir))
                         {
-                            try
-                            {
-                                Directory.Delete(tempPackDir, true);
-                            }
-                            catch
-                            {
-                                // 忽略清理错误
-                            }
+                            try { Directory.Delete(tempPackDir, true); } catch { }
                         }
                     }
                 }
@@ -484,11 +518,11 @@ namespace MsixTool.Commands
             );
             var certOption = new Option<string?>(
                 aliases: new[] { "--cert", "-c" },
-                description: "证书路径（可选，不提供则自动创建）"
+                description: "证书路径（可选，不提供则使用上次使用的值或自动创建），若提供则必须同时提供 --password"
             );
             var passwordOption = new Option<string?>(
                 aliases: new[] { "--password", "-pwd" },
-                description: "证书密码（可选）"
+                description: "证书密码（提供 --cert 时必填）"
             );
             var destOption = new Option<string?>(
                 aliases: new[] { "--dest", "-d" },
@@ -505,6 +539,15 @@ namespace MsixTool.Commands
             {
                 try
                 {
+                    // 校验：提供 --cert 时必须同时提供 --password
+                    if (!string.IsNullOrWhiteSpace(cert) && string.IsNullOrWhiteSpace(password))
+                    {
+                        PrintError("提供 --cert 参数时必须同时提供 --password 参数");
+                        Console.WriteLine("用法: msixtool packandsign --cert <证书路径> --password <密码> [其他选项]");
+                        Environment.Exit(1);
+                        return;
+                    }
+
                     // 获取清单路径
                     var sourcePath = src ?? Environment.CurrentDirectory;
                     var manifestPath = ManifestHelper.FindManifestPath(sourcePath);
@@ -558,34 +601,49 @@ namespace MsixTool.Commands
                         var msixPath = await packService.PackSparsePackageAsync(packDir, name);
                         Console.WriteLine($"✓ MSIX 包已创建: {msixPath}");
                         
-                        // 移动到目标目录
+                        // 目标目录与最终文件路径
                         var targetDir = Directory.GetParent(manifestDir)?.FullName ?? manifestDir;
                         var finalMsixPath = Path.Combine(targetDir, Path.GetFileName(msixPath));
-                        
-                        // 如果目标位置已存在同名文件，重命名备份
-                        if (File.Exists(finalMsixPath))
+
+                        // 仅在使用临时目录并且生成文件不在目标目录时执行移动与备份逻辑
+                        bool producedInTemp = tempPackDir != null && !msixPath.Equals(finalMsixPath, StringComparison.OrdinalIgnoreCase);
+                        if (producedInTemp)
                         {
+                            if (File.Exists(finalMsixPath))
+                            {
+                                try
+                                {
+                                    var timestamp = BackupConstants.GenerateTimestamp();
+                                    var nameWithoutExt = Path.GetFileNameWithoutExtension(finalMsixPath);
+                                    var extension = Path.GetExtension(finalMsixPath);
+                                    var backupName = $"{nameWithoutExt}_{timestamp}{extension}";
+                                    var backupPath = Path.Combine(targetDir, backupName);
+                                    File.Move(finalMsixPath, backupPath);
+                                    Console.WriteLine($"✓ 已备份现有文件: {Path.GetFileName(finalMsixPath)} -> {backupName}");
+                                }
+                                catch (Exception ex)
+                                {
+                                    PrintWarning($"备份现有文件失败: {ex.Message}，将删除旧文件");
+                                    try { File.Delete(finalMsixPath); } catch { }
+                                }
+                            }
+
                             try
                             {
-                                var fileInfo = new FileInfo(finalMsixPath);
-                                var timestamp = BackupConstants.GenerateTimestamp();
-                                var nameWithoutExt = Path.GetFileNameWithoutExtension(finalMsixPath);
-                                var extension = Path.GetExtension(finalMsixPath);
-                                var backupName = $"{nameWithoutExt}_{timestamp}{extension}";
-                                var backupPath = Path.Combine(targetDir, backupName);
-                                File.Move(finalMsixPath, backupPath);
-                                Console.WriteLine($"✓ 已备份现有文件: {Path.GetFileName(finalMsixPath)} -> {backupName}");
+                                File.Move(msixPath, finalMsixPath);
+                                msixPath = finalMsixPath;
+                                Console.WriteLine($"✓ MSIX 包已保存到: {msixPath}");
                             }
-                            catch (Exception ex)
+                            catch (Exception moveEx)
                             {
-                                PrintWarning($"备份现有文件失败: {ex.Message}，将删除旧文件");
-                                File.Delete(finalMsixPath);
+                                throw new InvalidOperationException($"移动生成的 MSIX 文件失败: {moveEx.Message}");
                             }
                         }
-                        
-                        File.Move(msixPath, finalMsixPath);
-                        msixPath = finalMsixPath;
-                        Console.WriteLine($"✓ MSIX 包已保存到: {msixPath}");
+                        else
+                        {
+                            // 文件已在目标目录，无需移动
+                            Console.WriteLine($"✓ MSIX 包已生成（无需移动）: {msixPath}");
+                        }
                         
                         // 处理证书
                         Console.WriteLine();
@@ -637,12 +695,13 @@ namespace MsixTool.Commands
         {
             var findCertCommand = new Command("findcert", "查找证书");
             
-            var nameOption = new Option<string?>(
-                aliases: new[] { "--name", "-n" },
-                description: "证书名称（支持模糊匹配）"
+            var nameArg = new Argument<string?>(
+                name: "certName",
+                description: "证书名称（支持模糊匹配，可选）",
+                getDefaultValue: () => null
             );
 
-            findCertCommand.AddOption(nameOption);
+            findCertCommand.AddArgument(nameArg);
 
             findCertCommand.SetHandler(async (name) =>
             {
@@ -656,7 +715,7 @@ namespace MsixTool.Commands
                     PrintError(ex.Message);
                     Environment.Exit(1);
                 }
-            }, nameOption);
+            }, nameArg);
 
             return findCertCommand;
         }
@@ -665,10 +724,10 @@ namespace MsixTool.Commands
         {
             var delCertCommand = new Command("delcert", "删除证书");
 
-            var pathOption = new Option<string?>(
-                aliases: new[] { "--path", "-p" },
+            var pathArg = new Argument<string?>(
+                name: "certPath",
                 description: "证书文件的完整路径"
-            ) { IsRequired = true };
+            );
 
             var systemOption = new Option<bool>(
                 aliases: new[] { "--system", "-s" },
@@ -676,13 +735,21 @@ namespace MsixTool.Commands
             );
             systemOption.SetDefaultValue(true);
 
-            delCertCommand.AddOption(pathOption);
+            delCertCommand.AddArgument(pathArg);
             delCertCommand.AddOption(systemOption);
 
             delCertCommand.SetHandler(async (path, system) =>
             {
                 try
                 {
+                    if (string.IsNullOrWhiteSpace(path))
+                    {
+                        PrintError("必须提供证书路径参数");
+                        Console.WriteLine("用法: msixtool delcert <证书路径> [--system]");
+                        Environment.Exit(1);
+                        return;
+                    }
+
                     var certService = new CertificateService();
                     await certService.DeleteCertificateAsync(path, system);
                 }
@@ -691,7 +758,7 @@ namespace MsixTool.Commands
                     PrintError(ex.Message);
                     Environment.Exit(1);
                 }
-            }, pathOption, systemOption);
+            }, pathArg, systemOption);
 
             return delCertCommand;
         }
