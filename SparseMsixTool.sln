@@ -1,8 +1,12 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SparseMsixTool", "SparseMsixTool.csproj", "{B8AD3B1F-DAF6-4ED9-B287-B6278FD93797}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{7F76E2FC-580E-4D54-9CC9-725410B1708E}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SparseMsixTool.Tests", "tests\SparseMsixTool.Tests\SparseMsixTool.Tests.csproj", "{836E190A-E41E-46F8-A9B7-792E84086136}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,11 +18,18 @@ Global
 		{B8AD3B1F-DAF6-4ED9-B287-B6278FD93797}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B8AD3B1F-DAF6-4ED9-B287-B6278FD93797}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B8AD3B1F-DAF6-4ED9-B287-B6278FD93797}.Release|Any CPU.Build.0 = Release|Any CPU
+		{836E190A-E41E-46F8-A9B7-792E84086136}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{836E190A-E41E-46F8-A9B7-792E84086136}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{836E190A-E41E-46F8-A9B7-792E84086136}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{836E190A-E41E-46F8-A9B7-792E84086136}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {6FDD2848-FB89-4C0E-B87B-2CA9B86F86B2}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{836E190A-E41E-46F8-A9B7-792E84086136} = {7F76E2FC-580E-4D54-9CC9-725410B1708E}
 	EndGlobalSection
 EndGlobal
