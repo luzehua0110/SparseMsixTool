@@ -21,7 +21,7 @@
 ### 安装
 
 从 [Releases](https://github.com/luzehua0110/SparseMsixTool/releases) 下载最新版本，解压即用。
-\n> 兼容说明：`msixtool` 仍作为临时别名存在，推荐立即迁移到新命令 `sparsemsix`。
+\n> 说明：自 v1.0.0 起工具已更名为 SparseMsixTool，旧命令 `msixtool` 已移除。
 
 ### 5分钟上手
 
@@ -168,8 +168,8 @@ MyApp.msix → MyApp_202510291630.msix
 
 ```powershell
 # 克隆仓库
-git clone https://github.com/luzehua0110/msixtool.git
-cd msixtool
+git clone https://github.com/luzehua0110/SparseMsixTool.git
+cd SparseMsixTool
 
 # Debug 编译
 dotnet build -c Debug

@@ -36,7 +36,7 @@ namespace SparseMsixTool.Services
                 await CreateMsixPackageAsync(actualSourcePath, msixPath, skipValidation: true);
                 
                 Console.WriteLine($"✓ 稀疏包打包完成: {msixPath}");
-                Console.WriteLine($"提示: 使用 'sparsemsix sign --src \"{msixPath}\" --cert <证书路径>' 命令对包进行签名 (旧别名: msixtool)");
+                Console.WriteLine($"提示: 使用 'sparsemsix sign --src \"{msixPath}\" --cert <证书路径>' 命令对包进行签名");
                 return msixPath;
             }
             catch (Exception ex)

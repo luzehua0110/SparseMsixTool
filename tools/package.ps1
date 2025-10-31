@@ -24,10 +24,7 @@ if ($LASTEXITCODE -ne 0) { throw "Publish failed" }
 $exe = Join-Path $publishDir "sparsemsix.exe"
 if (!(Test-Path $exe)) { throw "sparsemsix.exe not found: $exe" }
 
-$legacyAlias = Join-Path $publishDir "msixtool.exe"
-if (Test-Path $legacyAlias) { Remove-Item $legacyAlias -Force }
-Copy-Item $exe $legacyAlias
-Write-Host "==> Created legacy alias msixtool.exe" -ForegroundColor DarkYellow
+Write-Host "(legacy alias msixtool.exe 已移除)" -ForegroundColor DarkGray
 
 $csprojPath = Join-Path $PSScriptRoot "..\SparseMsixTool.csproj"
 $csprojContent = Get-Content $csprojPath -Raw
@@ -54,7 +51,7 @@ if ($LatestAlias -and -not $NoTimestamp) {
 
 $sizeMB = [math]::Round((Get-Item $zipPath).Length/1MB,2)
 Write-Host "Build successful: $zipName ($sizeMB MB)" -ForegroundColor Green
-Write-Host "Legacy alias included: msixtool.exe (will be removed in future versions)" -ForegroundColor DarkGray
+# No legacy alias included
 
 Write-Host "`nUsage:" -ForegroundColor Cyan
 Write-Host "  powershell -ExecutionPolicy Bypass -File tools/package.ps1 -Aot -LatestAlias" -ForegroundColor Gray

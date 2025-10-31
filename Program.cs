@@ -9,7 +9,7 @@ namespace SparseMsixTool
         static async Task<int> Main(string[] args)
         {
             Console.WriteLine("SparseMsixTool (MSIX Sparse Package Tool) v1.0.0");
-            Console.WriteLine("Formerly known as: MsixTool (legacy alias 'msixtool' still available)\n");
+            Console.WriteLine("Formerly known as: MsixTool (legacy alias removed)\n");
 
             // 检查是否是 --help 或 --version 命令，跳过依赖检查
             bool skipDependencyCheck = args.Length > 0 && 
@@ -26,7 +26,7 @@ namespace SparseMsixTool
                     Console.WriteLine("依赖检查失败，程序可能无法正常运行。");
                     Console.ResetColor();
                     Console.WriteLine();
-                    Console.WriteLine("输入 'msixtool deps' 查看详细依赖信息");
+                    Console.WriteLine("输入 'sparsemsix deps' 查看详细依赖信息");
                     Console.WriteLine();
                     Console.Write("是否继续运行? (Y/N): ");
                     var key = Console.ReadKey();

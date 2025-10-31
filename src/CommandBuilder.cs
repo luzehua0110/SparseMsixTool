@@ -211,7 +211,7 @@ namespace SparseMsixTool.Commands
                     if (string.IsNullOrWhiteSpace(src))
                     {
                         PrintError("必须提供 --src 参数 (MSIX 包路径)");
-                        Console.WriteLine("用法: sparsemsix sign --src <包路径> [--cert <证书路径> --password <密码>]  (旧别名: msixtool)");
+                        Console.WriteLine("用法: sparsemsix sign --src <包路径> [--cert <证书路径> --password <密码>]");
                         Environment.Exit(1);
                         return;
                     }
