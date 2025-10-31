@@ -17,15 +17,19 @@ jobs:
         with:
           dotnet-version: 8.0.x
       - name: Restore
-        run: dotnet restore
+        run: dotnet restore SparseMsixTool.sln
       - name: Build
-        run: dotnet build -c Release --no-restore
+        run: dotnet build SparseMsixTool.sln -c Release --no-restore
       - name: Test
-        run: dotnet test tests/MsixTool.Tests/MsixTool.Tests.csproj -c Release --no-build --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test SparseMsixTool.sln -c Release --no-build --logger "trx;LogFileName=test-results.trx" --collect "XPlat Code Coverage"
+      - name: Branding check
+        run: |
+          git grep -I -n -i "msixtool" -- ':!更新日志.md' ':!releases/archive/' || exit 0
+          echo "Found legacy alias usage outside allowed historical files" && exit 1
       - name: Publish (AOT)
-        run: dotnet publish -c Release -r win-x64 --self-contained true /p:PublishAot=true -o publish-aot
+        run: dotnet publish SparseMsixTool.csproj -c Release -r win-x64 --self-contained true /p:PublishAot=true -o publish-aot
       - name: Archive artifact
         uses: actions/upload-artifact@v4
         with:
-          name: msixtool-aot
-          path: publish-aot/msixtool.exe
+          name: sparsemsix-aot
+          path: publish-aot/sparsemsix.exe

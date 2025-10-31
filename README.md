@@ -1,4 +1,4 @@
-# SparseMsixTool （原 MsixTool）- MSIX 稀疏包工具
+# SparseMsixTool - MSIX 稀疏包工具
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/)
@@ -21,7 +21,6 @@
 ### 安装
 
 从 [Releases](https://github.com/luzehua0110/SparseMsixTool/releases) 下载最新版本，解压即用。
-\n> 说明：自 v1.0.0 起工具已更名为 SparseMsixTool，旧命令 `msixtool` 已移除。
 
 ### 5分钟上手
 
@@ -97,7 +96,7 @@ sparsemsix makecert --publisher "CN=MyCompany" --dest C:\Certs --password Compan
 sparsemsix packandsign --src C:\MyApp --dest C:\MyApp --cert C:\Certs\CN_MyCompany.pfx --password CompanyPass
 
 # 3. 分发 MSIX 文件给用户
-# 用户安装：sparsemsix install --src MyApp_1.0.0.0.msix --dest C:\MyApp （旧: msixtool install ...）
+# 用户安装：sparsemsix install --src MyApp_1.0.0.0.msix --dest C:\MyApp
 ```
 
 ### 场景3：自动化CI/CD
@@ -120,7 +119,7 @@ sparsemsix packandsign --src "$env:BUILD_DIR" --dest "$env:APP_DIR"
 sparsemsix packandinstall --dest C:\MyApp
 
 # 之后直接用（自动使用历史路径）
-sparsemsix packandinstall   # 旧别名: msixtool packandinstall
+sparsemsix packandinstall
 ```
 
 ### 证书复用

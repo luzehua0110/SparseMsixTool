@@ -8,6 +8,12 @@
   <AssemblyName>sparsemsix</AssemblyName>
   <RootNamespace>SparseMsixTool</RootNamespace>
   <Product>SparseMsixTool</Product>
+    <Description>SparseMsixTool - MSIX 稀疏包命令行工具（打包、签名、安装、卸载、证书管理，一步到位）。</Description>
+    <Authors>luzehua</Authors>
+    <Company>luzehua0110</Company>
+    <RepositoryUrl>https://github.com/luzehua0110/SparseMsixTool</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/luzehua0110/SparseMsixTool</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
     <!-- 版本信息 -->
     <Version>1.0.0</Version>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
