@@ -7,10 +7,10 @@
     <Nullable>enable</Nullable>
     <AssemblyName>msixtool</AssemblyName>
     <!-- 版本信息 -->
-    <Version>2.1.0</Version>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
-    <InformationalVersion>2.1.0</InformationalVersion>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <InformationalVersion>1.0.0</InformationalVersion>
     <!-- 排除测试目录 -->
     <DefaultItemExcludes>$(DefaultItemExcludes);tests/**</DefaultItemExcludes>
     <!-- Native AOT 编译 - 默认开启，无需.NET Runtime -->
