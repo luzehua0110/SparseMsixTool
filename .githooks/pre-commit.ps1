@@ -1,3 +1,4 @@
+#!/usr/bin/env pwsh
 # Pre-commit hook: block accidental reintroduction of legacy alias 'msixtool'
 # Excludes historical changelog file 更新日志.md
 param()
