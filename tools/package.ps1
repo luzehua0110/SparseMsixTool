@@ -21,19 +21,24 @@ Write-Host "==> Running dotnet $($pubArgs -join " ")" -ForegroundColor Yellow
 & dotnet @pubArgs
 if ($LASTEXITCODE -ne 0) { throw "Publish failed" }
 
-$exe = Join-Path $publishDir "msixtool.exe"
-if (!(Test-Path $exe)) { throw "msixtool.exe not found: $exe" }
+$exe = Join-Path $publishDir "sparsemsix.exe"
+if (!(Test-Path $exe)) { throw "sparsemsix.exe not found: $exe" }
 
-$csprojPath = Join-Path $PSScriptRoot "..\MsixTool.csproj"
+$legacyAlias = Join-Path $publishDir "msixtool.exe"
+if (Test-Path $legacyAlias) { Remove-Item $legacyAlias -Force }
+Copy-Item $exe $legacyAlias
+Write-Host "==> Created legacy alias msixtool.exe" -ForegroundColor DarkYellow
+
+$csprojPath = Join-Path $PSScriptRoot "..\SparseMsixTool.csproj"
 $csprojContent = Get-Content $csprojPath -Raw
 if ($csprojContent -match "<Version>([\d\.]+)</Version>") {
     $version = $Matches[1]
 } else {
-    throw "Cannot read version from MsixTool.csproj"
+    throw "Cannot read version from SparseMsixTool.csproj"
 }
 
 $timestamp = Get-Date -Format "yyyyMMdd"
-$zipBase = "MsixTool-v$version"
+$zipBase = "SparseMsixTool-v$version"
 $zipName = if ($NoTimestamp) { "$zipBase.zip" } else { "$zipBase-$timestamp.zip" }
 $zipPath = Join-Path (Get-Location) $zipName
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
@@ -49,6 +54,7 @@ if ($LatestAlias -and -not $NoTimestamp) {
 
 $sizeMB = [math]::Round((Get-Item $zipPath).Length/1MB,2)
 Write-Host "Build successful: $zipName ($sizeMB MB)" -ForegroundColor Green
+Write-Host "Legacy alias included: msixtool.exe (will be removed in future versions)" -ForegroundColor DarkGray
 
 Write-Host "`nUsage:" -ForegroundColor Cyan
 Write-Host "  powershell -ExecutionPolicy Bypass -File tools/package.ps1 -Aot -LatestAlias" -ForegroundColor Gray

@@ -1,16 +1,15 @@
 using System.CommandLine;
-using MsixTool.Commands;
-using MsixTool.Utils;
+using SparseMsixTool.Commands;
+using SparseMsixTool.Utils;
 
-namespace MsixTool
+namespace SparseMsixTool
 {
     class Program
     {
         static async Task<int> Main(string[] args)
         {
-            Console.WriteLine("MSIX Sparse Package Tool v1.0");
-            Console.WriteLine("==============================");
-            Console.WriteLine();
+            Console.WriteLine("SparseMsixTool (MSIX Sparse Package Tool) v1.0.0");
+            Console.WriteLine("Formerly known as: MsixTool (legacy alias 'msixtool' still available)\n");
 
             // 检查是否是 --help 或 --version 命令，跳过依赖检查
             bool skipDependencyCheck = args.Length > 0 && 

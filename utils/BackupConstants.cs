@@ -1,4 +1,4 @@
-namespace MsixTool.Utils
+namespace SparseMsixTool.Utils
 {
     public static class BackupConstants
     {

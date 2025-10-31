@@ -1,7 +1,7 @@
-using MsixTool.Config;
-using MsixTool.Utils;
+using SparseMsixTool.Config;
+using SparseMsixTool.Utils;
 
-namespace MsixTool.Services
+namespace SparseMsixTool.Services
 {
     public class CertificateService
     {

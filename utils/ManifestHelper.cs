@@ -1,6 +1,6 @@
 using System.Xml.Linq;
 
-namespace MsixTool.Utils
+namespace SparseMsixTool.Utils
 {
     public static class ManifestHelper
     {

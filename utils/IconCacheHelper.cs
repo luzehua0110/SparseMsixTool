@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace MsixTool.Utils
+namespace SparseMsixTool.Utils
 {
     /// <summary>
     /// 提供清理 Windows 图标缓存的功能，防止卸载 / 安装后开始菜单残留旧图标。

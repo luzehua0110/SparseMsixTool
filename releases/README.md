@@ -1,12 +1,12 @@
-# MsixTool 发布版本
+# SparseMsixTool 发布版本（原 MsixTool）
 
-此目录包含 MsixTool 的正式发布版本。
+此目录包含 SparseMsixTool 的正式发布版本（原 MsixTool，保留临时别名 msixtool）。
 
 ## 最新版本
 
-### v1.0.0 (2025-10-31) - 首个正式版本
+### v1.0.0 (2025-10-31) - 首个正式版本（更名后）
 
-**文件名**: `MsixTool-v1.0.0-20251031.zip`
+**文件名**: `SparseMsixTool-v1.0.0-20251031.zip`
 
 **主要特性**:
 - 🎯 **一键操作**: packandinstall 完成打包+签名+安装全流程
@@ -24,7 +24,7 @@
 **使用方法**:
 1. 解压 ZIP 文件到任意目录
 2. 将解压目录添加到系统 PATH 环境变量（可选）
-3. 运行 `msixtool --help` 查看帮助
+3. 运行 `sparsemsix --help` 查看帮助（旧别名：`msixtool --help`）
 
 **更新日志**: 查看根目录的 `更新日志.md`
 
@@ -36,16 +36,16 @@
 
 ## 命名规范
 
-发布包命名格式：`MsixTool-v{版本号}-{编译日期}.zip`
+发布包命名格式：`SparseMsixTool-v{版本号}-{编译日期}.zip`
 
 示例：
-- `MsixTool-v1.0.0-20251031.zip` - 版本 1.0.0，编译于 2025年10月31日
+- `SparseMsixTool-v1.0.0-20251031.zip` - 版本 1.0.0，编译于 2025年10月31日
 
 ---
 
 ## 下载链接
 
-- **GitHub Releases**: https://github.com/luzehua0110/msixtool/releases
+- **GitHub Releases**: https://github.com/luzehua0110/SparseMsixTool/releases
 - **直接下载**: 从此目录获取最新 ZIP 文件
 
 ---
@@ -56,10 +56,10 @@
 
 ```powershell
 # 查看文件大小
-Get-Item MsixTool-v1.0.0-*.zip | Select-Object Name, Length
+Get-Item SparseMsixTool-v1.0.0-*.zip | Select-Object Name, Length
 
 # 计算 SHA256 哈希（可选）
-Get-FileHash MsixTool-v1.0.0-*.zip -Algorithm SHA256
+Get-FileHash SparseMsixTool-v1.0.0-*.zip -Algorithm SHA256
 ```
 
 ---
@@ -67,5 +67,5 @@ Get-FileHash MsixTool-v1.0.0-*.zip -Algorithm SHA256
 ## 支持
 
 如有问题或建议，请：
-- 提交 Issue: https://github.com/luzehua0110/msixtool/issues
+- 提交 Issue: https://github.com/luzehua0110/SparseMsixTool/issues
 - 查看文档: 项目根目录的 `README.md`、`快速入门.md`、`命令参考.md`

@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Text;
 using System.Reflection;
 
-namespace MsixTool.Utils
+namespace SparseMsixTool.Utils
 {
     public static class WindowsSdkHelper
     {

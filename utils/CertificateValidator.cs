@@ -1,6 +1,6 @@
 using System.Security.Cryptography.X509Certificates;
 
-namespace MsixTool.Utils
+namespace SparseMsixTool.Utils
 {
     public static class CertificateValidator
     {

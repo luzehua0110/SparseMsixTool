@@ -1,9 +1,9 @@
 ﻿using System.CommandLine;
-using MsixTool.Services;
-using MsixTool.Utils;
-using MsixTool.Config;
+using SparseMsixTool.Services;
+using SparseMsixTool.Utils;
+using SparseMsixTool.Config;
 
-namespace MsixTool.Commands
+namespace SparseMsixTool.Commands
 {
     public static class CommandBuilder
     {
@@ -211,7 +211,7 @@ namespace MsixTool.Commands
                     if (string.IsNullOrWhiteSpace(src))
                     {
                         PrintError("必须提供 --src 参数 (MSIX 包路径)");
-                        Console.WriteLine("用法: msixtool sign --src <包路径> [--cert <证书路径> --password <密码>]");
+                        Console.WriteLine("用法: sparsemsix sign --src <包路径> [--cert <证书路径> --password <密码>]  (旧别名: msixtool)");
                         Environment.Exit(1);
                         return;
                     }
@@ -220,7 +220,7 @@ namespace MsixTool.Commands
                     if (!string.IsNullOrWhiteSpace(cert) && string.IsNullOrWhiteSpace(password))
                     {
                         PrintError("提供 --cert 参数时必须同时提供 --password 参数");
-                        Console.WriteLine("用法: msixtool sign --src <包路径> --cert <证书路径> --password <密码>");
+                        Console.WriteLine("用法: sparsemsix sign --src <包路径> --cert <证书路径> --password <密码>");
                         Environment.Exit(1);
                         return;
                     }
@@ -282,7 +282,7 @@ namespace MsixTool.Commands
                     if (!string.IsNullOrWhiteSpace(cert) && string.IsNullOrWhiteSpace(password))
                     {
                         PrintError("提供 --cert 参数时必须同时提供 --password 参数");
-                        Console.WriteLine("用法: msixtool packandinstall --cert <证书路径> --password <密码> [其他选项]");
+                        Console.WriteLine("用法: sparsemsix packandinstall --cert <证书路径> --password <密码> [其他选项]");
                         Environment.Exit(1);
                         return;
                     }
@@ -300,7 +300,7 @@ namespace MsixTool.Commands
                     if (string.IsNullOrWhiteSpace(finalDest))
                     {
                         PrintError("未提供 --dest 且无历史路径可以回退，必须指定外部程序路径。");
-                        Console.WriteLine("用法: msixtool packandinstall --dest <exe路径> [其他选项]");
+                        Console.WriteLine("用法: sparsemsix packandinstall --dest <exe路径> [其他选项]");
                         Environment.Exit(1);
                         return;
                     }
@@ -543,7 +543,7 @@ namespace MsixTool.Commands
                     if (!string.IsNullOrWhiteSpace(cert) && string.IsNullOrWhiteSpace(password))
                     {
                         PrintError("提供 --cert 参数时必须同时提供 --password 参数");
-                        Console.WriteLine("用法: msixtool packandsign --cert <证书路径> --password <密码> [其他选项]");
+                        Console.WriteLine("用法: sparsemsix packandsign --cert <证书路径> --password <密码> [其他选项]");
                         Environment.Exit(1);
                         return;
                     }
@@ -745,7 +745,7 @@ namespace MsixTool.Commands
                     if (string.IsNullOrWhiteSpace(path))
                     {
                         PrintError("必须提供证书路径参数");
-                        Console.WriteLine("用法: msixtool delcert <证书路径> [--system]");
+                        Console.WriteLine("用法: sparsemsix delcert <证书路径> [--system]");
                         Environment.Exit(1);
                         return;
                     }

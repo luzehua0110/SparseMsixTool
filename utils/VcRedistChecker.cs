@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using Microsoft.Win32;
 
-namespace MsixTool.Utils
+namespace SparseMsixTool.Utils
 {
     public static class VcRedistChecker
     {

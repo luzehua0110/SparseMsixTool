@@ -1,7 +1,7 @@
-using MsixTool.Config;
-using MsixTool.Utils;
+using SparseMsixTool.Config;
+using SparseMsixTool.Utils;
 
-namespace MsixTool.Services
+namespace SparseMsixTool.Services
 {
     public class PackageService
     {
@@ -36,7 +36,7 @@ namespace MsixTool.Services
                 await CreateMsixPackageAsync(actualSourcePath, msixPath, skipValidation: true);
                 
                 Console.WriteLine($"✓ 稀疏包打包完成: {msixPath}");
-                Console.WriteLine($"提示: 使用 'msixtool sign --src \"{msixPath}\" --cert <证书路径>' 命令对包进行签名");
+                Console.WriteLine($"提示: 使用 'sparsemsix sign --src \"{msixPath}\" --cert <证书路径>' 命令对包进行签名 (旧别名: msixtool)");
                 return msixPath;
             }
             catch (Exception ex)

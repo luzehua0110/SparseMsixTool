@@ -1,4 +1,4 @@
-# MsixTool - MSIX 稀疏包工具
+# SparseMsixTool （原 MsixTool）- MSIX 稀疏包工具
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-8.0-purple.svg)](https://dotnet.microsoft.com/)
@@ -20,22 +20,23 @@
 
 ### 安装
 
-从 [Releases](https://github.com/luzehua0110/msixtool/releases) 下载最新版本，解压即用。
+从 [Releases](https://github.com/luzehua0110/SparseMsixTool/releases) 下载最新版本，解压即用。
+\n> 兼容说明：`msixtool` 仍作为临时别名存在，推荐立即迁移到新命令 `sparsemsix`。
 
 ### 5分钟上手
 
 ```powershell
 # 1. 创建自签名证书（首次使用）
-msixtool makecert --publisher "CN=MyCompany" --password "pass123"
+sparsemsix makecert --publisher "CN=MyCompany" --password "pass123"
 
 # 2. 一键打包、签名并安装稀疏包
-msixtool packandinstall --src "C:\MyApp" --dest "C:\MyApp"
+sparsemsix packandinstall --src "C:\MyApp" --dest "C:\MyApp"
 
 # 3. 查找已安装的包
-msixtool find MyApp
+sparsemsix find MyApp
 
 # 4. 卸载包
-msixtool uninstall MyApp
+sparsemsix uninstall MyApp
 ```
 
 ## 📋 命令速查
@@ -44,27 +45,27 @@ msixtool uninstall MyApp
 
 | 命令 | 说明 | 示例 |
 |------|------|------|
-| **packandinstall** | 打包+签名+安装（一步到位） | `msixtool packandinstall --dest C:\App` |
-| **packandsign** | 打包+签名（不安装） | `msixtool packandsign --src . --dest C:\App` |
-| **install** | 安装 MSIX 包 | `msixtool install --src app.msix --dest C:\App` |
-| **uninstall** | 卸载包 | `msixtool uninstall MyApp` |
-| **find** | 查找已安装的包 | `msixtool find MyApp` |
+| **packandinstall** | 打包+签名+安装（一步到位） | `sparsemsix packandinstall --dest C:\App` |
+| **packandsign** | 打包+签名（不安装） | `sparsemsix packandsign --src . --dest C:\App` |
+| **install** | 安装 MSIX 包 | `sparsemsix install --src app.msix --dest C:\App` |
+| **uninstall** | 卸载包 | `sparsemsix uninstall MyApp` |
+| **find** | 查找已安装的包 | `sparsemsix find MyApp` |
 
 ### 证书管理
 
 | 命令 | 说明 | 示例 |
 |------|------|------|
-| **makecert** | 创建自签名证书 | `msixtool makecert --publisher "CN=Company" --password pass123` |
-| **sign** | 为包签名 | `msixtool sign --src app.msix --cert cert.pfx --password pass123` |
-| **findcert** | 查找证书 | `msixtool findcert MyCompany` |
-| **delcert** | 删除证书 | `msixtool delcert C:\cert.pfx` |
+| **makecert** | 创建自签名证书 | `sparsemsix makecert --publisher "CN=Company" --password pass123` |
+| **sign** | 为包签名 | `sparsemsix sign --src app.msix --cert cert.pfx --password pass123` |
+| **findcert** | 查找证书 | `sparsemsix findcert MyCompany` |
+| **delcert** | 删除证书 | `sparsemsix delcert C:\cert.pfx` |
 
 ### 其他工具
 
 | 命令 | 说明 | 示例 |
 |------|------|------|
-| **pack** | 仅打包（不签名） | `msixtool pack --src .` |
-| **deps** | 检查依赖 | `msixtool deps` |
+| **pack** | 仅打包（不签名） | `sparsemsix pack --src .` |
+| **deps** | 检查依赖 | `sparsemsix deps` |
 
 ## 🎯 典型场景
 
@@ -80,30 +81,30 @@ MyApp/
 
 # 一键打包安装（--dest 指定外部程序所在目录）
 cd MyApp
-msixtool packandinstall --dest .
+sparsemsix packandinstall --dest .
 
 # 测试完成后卸载
-msixtool uninstall MyApp
+sparsemsix uninstall MyApp
 ```
 
 ### 场景2：企业内部分发
 
 ```powershell
 # 1. 创建企业证书（--dest 指定证书保存目录）
-msixtool makecert --publisher "CN=MyCompany" --dest C:\Certs --password CompanyPass
+sparsemsix makecert --publisher "CN=MyCompany" --dest C:\Certs --password CompanyPass
 
 # 2. 打包签名（不安装，--dest 指定外部程序所在目录）
-msixtool packandsign --src C:\MyApp --dest C:\MyApp --cert C:\Certs\CN_MyCompany.pfx --password CompanyPass
+sparsemsix packandsign --src C:\MyApp --dest C:\MyApp --cert C:\Certs\CN_MyCompany.pfx --password CompanyPass
 
 # 3. 分发 MSIX 文件给用户
-# 用户安装：msixtool install --src MyApp_1.0.0.0.msix --dest C:\MyApp
+# 用户安装：sparsemsix install --src MyApp_1.0.0.0.msix --dest C:\MyApp （旧: msixtool install ...）
 ```
 
 ### 场景3：自动化CI/CD
 
 ```powershell
 # 构建后自动打包（不安装，--dest 指定外部程序所在目录）
-msixtool packandsign --src "$env:BUILD_DIR" --dest "$env:APP_DIR"
+sparsemsix packandsign --src "$env:BUILD_DIR" --dest "$env:APP_DIR"
 
 # 上传生成的 .msix 到发布平台
 ```
@@ -116,10 +117,10 @@ msixtool packandsign --src "$env:BUILD_DIR" --dest "$env:APP_DIR"
 
 ```powershell
 # 第一次（--dest 指定外部程序所在目录）
-msixtool packandinstall --dest C:\MyApp
+sparsemsix packandinstall --dest C:\MyApp
 
 # 之后直接用（自动使用历史路径）
-msixtool packandinstall
+sparsemsix packandinstall   # 旧别名: msixtool packandinstall
 ```
 
 ### 证书复用
@@ -128,10 +129,10 @@ msixtool packandinstall
 
 ```powershell
 # 第一次指定证书（--dest 指定外部程序所在目录）
-msixtool packandinstall --cert cert.pfx --password pass123 --dest C:\MyApp
+sparsemsix packandinstall --cert cert.pfx --password pass123 --dest C:\MyApp
 
 # 之后自动使用配置中的证书
-msixtool packandinstall --dest C:\MyApp
+sparsemsix packandinstall --dest C:\MyApp
 ```
 
 ### 文件自动备份

@@ -1,8 +1,8 @@
-using MsixTool.Config;
-using MsixTool.Utils;
+using SparseMsixTool.Config;
+using SparseMsixTool.Utils;
 using Windows.Management.Deployment;
 
-namespace MsixTool.Services
+namespace SparseMsixTool.Services
 {
     public class InstallService
     {

@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace MsixTool.Utils
+namespace SparseMsixTool.Utils
 {
     public static class DependencyChecker
     {
@@ -284,7 +284,7 @@ namespace MsixTool.Utils
         /// </summary>
         public static void ShowDependencyInfo()
         {
-            Console.WriteLine("=== MsixTool 运行依赖 ===");
+            Console.WriteLine("=== SparseMsixTool 运行依赖 (旧别名: MsixTool) ===");
             Console.WriteLine();
             Console.WriteLine("注意: 本程序使用 Native AOT 编译，无需安装 .NET Runtime");
             Console.WriteLine();

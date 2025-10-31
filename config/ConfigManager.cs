@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace MsixTool.Config
+namespace SparseMsixTool.Config
 {
     // JSON 源生成器上下文 - 用于 Native AOT 兼容
     [JsonSourceGenerationOptions(WriteIndented = true, PropertyNameCaseInsensitive = true)]

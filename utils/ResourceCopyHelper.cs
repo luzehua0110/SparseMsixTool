@@ -1,6 +1,6 @@
 using System.IO.Compression;
 
-namespace MsixTool.Utils
+namespace SparseMsixTool.Utils
 {
     /// <summary>
     /// 从稀疏包中拷贝资源（图标、图片等）到外部程序路径
