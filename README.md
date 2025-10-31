@@ -29,7 +29,7 @@
 msixtool makecert --publisher "CN=MyCompany" --password "pass123"
 
 # 2. 一键打包、签名并安装稀疏包
-msixtool packandinstall --src "C:\MyApp" --dest "C:\MyApp\MyApp.exe"
+msixtool packandinstall --src "C:\MyApp" --dest "C:\MyApp"
 
 # 3. 查找已安装的包
 msixtool find MyApp
@@ -44,9 +44,9 @@ msixtool uninstall MyApp
 
 | 命令 | 说明 | 示例 |
 |------|------|------|
-| **packandinstall** | 打包+签名+安装（一步到位） | `msixtool packandinstall --dest C:\App\app.exe` |
-| **packandsign** | 打包+签名（不安装） | `msixtool packandsign --src . --dest C:\App\app.exe` |
-| **install** | 安装 MSIX 包 | `msixtool install --src app.msix --dest C:\App\app.exe` |
+| **packandinstall** | 打包+签名+安装（一步到位） | `msixtool packandinstall --dest C:\App` |
+| **packandsign** | 打包+签名（不安装） | `msixtool packandsign --src . --dest C:\App` |
+| **install** | 安装 MSIX 包 | `msixtool install --src app.msix --dest C:\App` |
 | **uninstall** | 卸载包 | `msixtool uninstall MyApp` |
 | **find** | 查找已安装的包 | `msixtool find MyApp` |
 
@@ -78,9 +78,9 @@ MyApp/
 └── Assets/
     └── logo.png
 
-# 一键打包安装
+# 一键打包安装（--dest 指定外部程序所在目录）
 cd MyApp
-msixtool packandinstall --dest MyApp.exe
+msixtool packandinstall --dest .
 
 # 测试完成后卸载
 msixtool uninstall MyApp
@@ -89,21 +89,21 @@ msixtool uninstall MyApp
 ### 场景2：企业内部分发
 
 ```powershell
-# 1. 创建企业证书
+# 1. 创建企业证书（--dest 指定证书保存目录）
 msixtool makecert --publisher "CN=MyCompany" --dest C:\Certs --password CompanyPass
 
-# 2. 打包签名（不安装）
-msixtool packandsign --src C:\MyApp --dest C:\MyApp\app.exe --cert C:\Certs\MyCompany.pfx --password CompanyPass
+# 2. 打包签名（不安装，--dest 指定外部程序所在目录）
+msixtool packandsign --src C:\MyApp --dest C:\MyApp --cert C:\Certs\CN_MyCompany.pfx --password CompanyPass
 
 # 3. 分发 MSIX 文件给用户
-# 用户安装：msixtool install --src MyApp_1.0.0.0.msix --dest C:\MyApp\app.exe
+# 用户安装：msixtool install --src MyApp_1.0.0.0.msix --dest C:\MyApp
 ```
 
 ### 场景3：自动化CI/CD
 
 ```powershell
-# 构建后自动打包（不安装）
-msixtool packandsign --src "$env:BUILD_DIR" --dest "$env:APP_EXE"
+# 构建后自动打包（不安装，--dest 指定外部程序所在目录）
+msixtool packandsign --src "$env:BUILD_DIR" --dest "$env:APP_DIR"
 
 # 上传生成的 .msix 到发布平台
 ```
@@ -112,11 +112,11 @@ msixtool packandsign --src "$env:BUILD_DIR" --dest "$env:APP_EXE"
 
 ### 配置记忆
 
-工具会自动记住上次使用的外部程序路径，下次可省略 `--dest`：
+工具会自动记住上次使用的外部程序路径（目录），下次可省略 `--dest`：
 
 ```powershell
-# 第一次
-msixtool packandinstall --dest C:\MyApp\app.exe
+# 第一次（--dest 指定外部程序所在目录）
+msixtool packandinstall --dest C:\MyApp
 
 # 之后直接用（自动使用历史路径）
 msixtool packandinstall
@@ -127,11 +127,11 @@ msixtool packandinstall
 证书和密码会保存到配置文件（`config/app.config.json`），后续自动使用：
 
 ```powershell
-# 第一次指定证书
-msixtool packandinstall --cert cert.pfx --password pass123 --dest app.exe
+# 第一次指定证书（--dest 指定外部程序所在目录）
+msixtool packandinstall --cert cert.pfx --password pass123 --dest C:\MyApp
 
 # 之后自动使用配置中的证书
-msixtool packandinstall --dest app.exe
+msixtool packandinstall --dest C:\MyApp
 ```
 
 ### 文件自动备份
