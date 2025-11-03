@@ -526,20 +526,58 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
         {
             if (string.IsNullOrEmpty(certPath))
             {
-                throw new ArgumentException("必须指定证书路径 (--path)");
+                throw new ArgumentException("必须指定证书路径或证书主题名称");
             }
+
+            // 先尝试作为完整路径处理
+            string? actualCertPath = certPath;
+            string? certSubject = null;
 
             if (!File.Exists(certPath))
             {
-                throw new FileNotFoundException($"证书文件不存在: {certPath}");
+                // 如果文件不存在，尝试从配置中查找该名称作为证书主题
+                var configData = ConfigManager.GetConfig();
+                
+                // 尝试多种匹配方式：
+                // 1. 完全匹配 key (如 "CN=HelloKitty")
+                // 2. 完全匹配 Subject
+                // 3. 部分匹配（如 "HelloKitty" 匹配 "CN=HelloKitty"）
+                var certConfig = configData.Certificates.FirstOrDefault(c => 
+                    c.Key.Equals(certPath, StringComparison.OrdinalIgnoreCase) ||
+                    c.Value.Subject.Equals(certPath, StringComparison.OrdinalIgnoreCase) ||
+                    c.Key.Contains(certPath, StringComparison.OrdinalIgnoreCase) ||
+                    c.Value.Subject.Contains(certPath, StringComparison.OrdinalIgnoreCase));
+
+                if (certConfig.Value != null)
+                {
+                    actualCertPath = certConfig.Value.CertificatePath;
+                    certSubject = certConfig.Key;
+                    Console.WriteLine($"从配置中找到证书: {certSubject} -> {actualCertPath}");
+                }
+                else
+                {
+                    throw new FileNotFoundException($"证书文件不存在，且未在配置中找到名称: {certPath}");
+                }
             }
 
-            Console.WriteLine($"准备删除证书: {certPath}");
+            Console.WriteLine($"准备删除证书: {actualCertPath}");
+
+            // 先获取密码（如果有），因为后面会从配置中删除
+            // 无论是通过名称还是路径找到的，都需要从配置中查找密码
+            string? password = null;
+            var tempConfig = ConfigManager.GetConfig();
+            var certEntry = tempConfig.Certificates.FirstOrDefault(c =>
+                Path.GetFullPath(c.Value.CertificatePath).Equals(Path.GetFullPath(actualCertPath), StringComparison.OrdinalIgnoreCase));
+            
+            if (certEntry.Value != null)
+            {
+                password = certEntry.Value.Password;
+            }
 
             // 从配置中查找并移除
             var config = ConfigManager.GetConfig();
-            var certToRemove = config.Certificates.FirstOrDefault(c => 
-                Path.GetFullPath(c.Value.CertificatePath).Equals(Path.GetFullPath(certPath), StringComparison.OrdinalIgnoreCase));
+            var certToRemove = config.Certificates.FirstOrDefault(c =>
+                Path.GetFullPath(c.Value.CertificatePath).Equals(Path.GetFullPath(actualCertPath), StringComparison.OrdinalIgnoreCase));
 
             if (certToRemove.Value != null)
             {
@@ -553,7 +591,7 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
             {
                 try
                 {
-                    await RemoveCertificateFromSystemAsync(certPath);
+                    await RemoveCertificateFromSystemAsync(actualCertPath, password);
                     Console.WriteLine("✓ 已从系统证书存储中移除");
                 }
                 catch (Exception ex)
@@ -565,8 +603,8 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
             // 删除证书文件
             try
             {
-                File.Delete(certPath);
-                Console.WriteLine($"✓ 证书文件已删除: {certPath}");
+                File.Delete(actualCertPath);
+                Console.WriteLine($"✓ 证书文件已删除: {actualCertPath}");
             }
             catch (Exception ex)
             {
@@ -577,13 +615,24 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
         /// <summary>
         /// 从系统证书存储中移除证书
         /// </summary>
-        private async Task RemoveCertificateFromSystemAsync(string certPath)
+        private async Task RemoveCertificateFromSystemAsync(string certPath, string? password = null)
         {
             // 先获取证书的 Thumbprint
-            var getThumbprintCommand = $@"
+            string getThumbprintCommand;
+            if (!string.IsNullOrEmpty(password))
+            {
+                getThumbprintCommand = $@"
+$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2('{certPath.Replace("'", "''")}', '{password.Replace("'", "''")}')
+$cert.Thumbprint
+";
+            }
+            else
+            {
+                getThumbprintCommand = $@"
 $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2('{certPath.Replace("'", "''")}')
 $cert.Thumbprint
 ";
+            }
 
             var (success1, thumbprint, error1) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{getThumbprintCommand}\"");
 
