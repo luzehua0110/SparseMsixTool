@@ -726,7 +726,7 @@ namespace SparseMsixTool.Commands
 
             var pathArg = new Argument<string?>(
                 name: "certPath",
-                description: "证书文件的完整路径"
+                description: "证书文件路径、证书主题名称或证书指纹（Thumbprint）"
             );
 
             var systemOption = new Option<bool>(
@@ -744,8 +744,13 @@ namespace SparseMsixTool.Commands
                 {
                     if (string.IsNullOrWhiteSpace(path))
                     {
-                        PrintError("必须提供证书路径参数");
-                        Console.WriteLine("用法: sparsemsix delcert <证书路径> [--system]");
+                        PrintError("必须提供证书路径、名称或指纹参数");
+                        Console.WriteLine("用法: sparsemsix delcert <证书路径|名称|指纹> [--system]");
+                        Console.WriteLine("示例:");
+                        Console.WriteLine("  sparsemsix delcert HelloKitty");
+                        Console.WriteLine("  sparsemsix delcert CN=HelloKitty");
+                        Console.WriteLine("  sparsemsix delcert C:\\certs\\HelloKitty.pfx");
+                        Console.WriteLine("  sparsemsix delcert 5838D6C78689EEABBDB0E511DBFA8D273A3456AF");
                         Environment.Exit(1);
                         return;
                     }

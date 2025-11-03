@@ -17,15 +17,16 @@ namespace SparseMsixTool.Config
     {
         [JsonPropertyName("Subject")]
         public string Subject { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("CertificatePath")]
         public string CertificatePath { get; set; } = string.Empty;
-        
+
         [JsonPropertyName("Password")]
         public string Password { get; set; } = "1234567";
-    }
 
-    public class AppConfig
+        [JsonPropertyName("Thumbprint")]
+        public string Thumbprint { get; set; } = string.Empty;
+    }    public class AppConfig
     {
         [JsonPropertyName("Certificates")]
         public Dictionary<string, CertificateConfig> Certificates { get; set; } = new();
@@ -131,14 +132,33 @@ namespace SparseMsixTool.Config
             }
         }
 
-        public static void SaveCertificateConfig(string subject, string certificatePath, string password = "1234567")
+        public static void SaveCertificateConfig(string subject, string certificatePath, string password, string? thumbprint = null)
         {
             var config = GetConfig();
-            config.Certificates[subject] = new CertificateConfig
+            
+            // 如果没有提供 Thumbprint，尝试从证书文件读取
+            if (string.IsNullOrEmpty(thumbprint) && File.Exists(certificatePath))
+            {
+                try
+                {
+                    var cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(certificatePath, password);
+                    thumbprint = cert.Thumbprint;
+                }
+                catch
+                {
+                    // 如果读取失败，使用占位符（后续可以更新）
+                    thumbprint = "PENDING";
+                }
+            }
+
+            // 使用 Subject|Thumbprint 作为 key，支持同一个 Subject 有多个证书
+            var key = $"{subject}|{thumbprint ?? "UNKNOWN"}";
+            config.Certificates[key] = new CertificateConfig
             {
                 Subject = subject,
                 CertificatePath = certificatePath,
-                Password = password
+                Password = password,
+                Thumbprint = thumbprint ?? string.Empty
             };
             SaveConfig();
             Console.WriteLine($"证书配置已保存: {subject} -> {certificatePath}");

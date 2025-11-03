@@ -1,22 +1,20 @@
-using SparseMsixTool.Config;
+﻿using SparseMsixTool.Config;
 using SparseMsixTool.Utils;
 
 namespace SparseMsixTool.Services
 {
     public class CertificateService
     {
-        public async Task CreateCertificateAsync(string? subjectName, string? manifestPath, string? password)
+        public async Task CreateCertificateAsync(string? subjectName, string? outputDirectory, string? password)
         {
             Console.WriteLine("开始创建证书...");
 
             string publisher;
-            string? outputPath = null; // 默认为 null，让证书保存到 data 目录
             string certPassword = password ?? "1234567";
 
-            // 优先使用 --name 参数
+            // 确保主题名称格式正确
             if (!string.IsNullOrEmpty(subjectName))
             {
-                // 确保主体名称格式正确
                 if (!subjectName.StartsWith("CN=") && !subjectName.StartsWith("O=") && !subjectName.StartsWith("OU="))
                 {
                     publisher = $"CN={subjectName}";
@@ -25,40 +23,20 @@ namespace SparseMsixTool.Services
                 {
                     publisher = subjectName;
                 }
-                // 使用默认的 data 目录
-                outputPath = null;
-            }
-            // 其次使用 --manifest 参数
-            else if (!string.IsNullOrEmpty(manifestPath))
-            {
-                Console.WriteLine($"从清单文件读取 Publisher: {manifestPath}");
-                
-                if (!File.Exists(manifestPath))
-                {
-                    throw new FileNotFoundException($"清单文件不存在: {manifestPath}");
-                }
-
-                // 从清单文件解析 Publisher
-                publisher = ManifestHelper.GetPublisherFromManifest(manifestPath);
-                Console.WriteLine($"✓ 从清单文件解析到 Publisher: {publisher}");
-                
-                // 使用默认的 data 目录，不再使用清单文件所在目录
-                outputPath = null;
             }
             else
             {
-                // 不应该到达这里，因为 CommandBuilder 已经做了验证
-                throw new ArgumentException("必须指定 --name 或 --manifest 参数");
+                throw new ArgumentException("必须指定 --publisher 参数");
             }
 
-            var certPath = await CreateCertificateForPublisherAsync(publisher, outputPath, certPassword);
+            var certPath = await CreateCertificateForPublisherAsync(publisher, outputDirectory, certPassword);
             Console.WriteLine($"✓ 证书创建完成: {certPath}");
             Console.WriteLine($"✓ 证书密码: {certPassword}");
 
             // 保存到配置
             ConfigManager.SaveCertificateConfig(publisher, certPath, certPassword);
             Console.WriteLine($"✓ 证书配置已保存到配置文件");
-        }        public async Task<string> CreateCertificateForPublisherAsync(string publisher, string? outputDirectory, string password = "1234567", bool installCertificate = true)
+        }public async Task<string> CreateCertificateForPublisherAsync(string publisher, string? outputDirectory, string password = "1234567", bool installCertificate = true)
         {
             // 如果没有指定输出目录，使用程序运行目录下的data目录
             string actualOutputDir;
@@ -500,10 +478,22 @@ if ($cert) {{
         private async Task SearchSystemCertificatesAsync(string pattern)
         {
             var command = $@"
-Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMachine\My -ErrorAction SilentlyContinue |
-    Where-Object {{ $_.Subject -like '*{pattern}*' -or $_.FriendlyName -like '*{pattern}*' }} |
-    Select-Object Subject, FriendlyName, Thumbprint, NotAfter |
-    Format-Table -AutoSize
+$certs = Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMachine\My -ErrorAction SilentlyContinue |
+    Where-Object {{ $_.Subject -like '*{pattern}*' -or $_.FriendlyName -like '*{pattern}*' }}
+
+if ($certs) {{
+    foreach ($cert in $certs) {{
+        Write-Host ""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━""
+        Write-Host ""Subject      : $($cert.Subject)""
+        Write-Host ""FriendlyName : $($cert.FriendlyName)""
+        Write-Host ""Thumbprint   : $($cert.Thumbprint)""
+        Write-Host ""NotAfter     : $($cert.NotAfter)""
+        Write-Host ""Store        : $($cert.PSParentPath -replace '.*::','')""
+    }}
+    Write-Host ""━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━""
+}} else {{
+    Write-Host ""未找到匹配的系统证书""
+}}
 ";
 
             var (success, output, error) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{command}\"");
@@ -535,18 +525,26 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
 
             if (!File.Exists(certPath))
             {
-                // 如果文件不存在，尝试从配置中查找该名称作为证书主题
+                // 如果文件不存在，尝试从配置中查找该名称作为证书主题或 Thumbprint
                 var configData = ConfigManager.GetConfig();
                 
                 // 尝试多种匹配方式：
-                // 1. 完全匹配 key (如 "CN=HelloKitty")
+                // 1. 完全匹配 key (如 "CN=HelloKitty|ABC123...")
                 // 2. 完全匹配 Subject
                 // 3. 部分匹配（如 "HelloKitty" 匹配 "CN=HelloKitty"）
+                // 4. 通过 Thumbprint 匹配（key 中包含或 Value.Thumbprint 匹配）
                 var certConfig = configData.Certificates.FirstOrDefault(c => 
                     c.Key.Equals(certPath, StringComparison.OrdinalIgnoreCase) ||
                     c.Value.Subject.Equals(certPath, StringComparison.OrdinalIgnoreCase) ||
                     c.Key.Contains(certPath, StringComparison.OrdinalIgnoreCase) ||
-                    c.Value.Subject.Contains(certPath, StringComparison.OrdinalIgnoreCase));
+                    c.Value.Subject.Contains(certPath, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(c.Value.Thumbprint) && c.Value.Thumbprint.Equals(certPath, StringComparison.OrdinalIgnoreCase)));
+
+                // 如果还没找到，尝试通过 Thumbprint 计算匹配
+                if (certConfig.Value == null && certPath.Length >= 40) // Thumbprint 通常是 40 个十六进制字符
+                {
+                    certConfig = await FindCertificateByThumbprintAsync(configData, certPath);
+                }
 
                 if (certConfig.Value != null)
                 {
@@ -554,10 +552,35 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
                     certSubject = certConfig.Key;
                     Console.WriteLine($"从配置中找到证书: {certSubject} -> {actualCertPath}");
                 }
+                else if (certPath.Length >= 40)
+                {
+                    // 如果是 Thumbprint 格式但未在配置中找到，仍然尝试从系统删除
+                    Console.WriteLine($"未在配置中找到 Thumbprint: {certPath}");
+                    Console.WriteLine("将仅尝试从系统证书存储中删除...");
+                    actualCertPath = null; // 标记为只删除系统证书
+                }
                 else
                 {
-                    throw new FileNotFoundException($"证书文件不存在，且未在配置中找到名称: {certPath}");
+                    throw new FileNotFoundException($"证书文件不存在，且未在配置中找到名称或指纹: {certPath}");
                 }
+            }
+
+            // 处理只有 Thumbprint 的情况（仅删除系统证书）
+            if (actualCertPath == null)
+            {
+                if (removeFromSystem && certPath.Length >= 40)
+                {
+                    try
+                    {
+                        await RemoveCertificateFromSystemByThumbprintAsync(certPath);
+                        Console.WriteLine("✓ 已从系统证书存储中移除");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠ 从系统证书存储移除失败: {ex.Message}");
+                    }
+                }
+                return; // 没有文件路径，只处理系统证书
             }
 
             Console.WriteLine($"准备删除证书: {actualCertPath}");
@@ -567,6 +590,7 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
             string? password = null;
             var tempConfig = ConfigManager.GetConfig();
             var certEntry = tempConfig.Certificates.FirstOrDefault(c =>
+                !string.IsNullOrEmpty(c.Value.CertificatePath) &&
                 Path.GetFullPath(c.Value.CertificatePath).Equals(Path.GetFullPath(actualCertPath), StringComparison.OrdinalIgnoreCase));
             
             if (certEntry.Value != null)
@@ -574,16 +598,38 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
                 password = certEntry.Value.Password;
             }
 
-            // 从配置中查找并移除
+            // 从配置中查找并移除（根据 Thumbprint 精确删除）
             var config = ConfigManager.GetConfig();
-            var certToRemove = config.Certificates.FirstOrDefault(c =>
-                Path.GetFullPath(c.Value.CertificatePath).Equals(Path.GetFullPath(actualCertPath), StringComparison.OrdinalIgnoreCase));
+            var certsToRemove = config.Certificates.Where(c =>
+                !string.IsNullOrEmpty(c.Value.CertificatePath) &&
+                Path.GetFullPath(c.Value.CertificatePath).Equals(Path.GetFullPath(actualCertPath), StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
-            if (certToRemove.Value != null)
+            if (certsToRemove.Count > 0)
             {
-                config.Certificates.Remove(certToRemove.Key);
-                ConfigManager.SaveConfig();
-                Console.WriteLine($"✓ 已从配置中移除: {certToRemove.Key}");
+                // 如果提供了具体的 Thumbprint，只删除匹配的那个
+                if (!string.IsNullOrEmpty(certPath) && certPath.Length >= 40)
+                {
+                    var thumbprintMatch = certsToRemove.FirstOrDefault(c => 
+                        !string.IsNullOrEmpty(c.Value.Thumbprint) && 
+                        c.Value.Thumbprint.Equals(certPath, StringComparison.OrdinalIgnoreCase));
+                    if (thumbprintMatch.Value != null)
+                    {
+                        config.Certificates.Remove(thumbprintMatch.Key);
+                        ConfigManager.SaveConfig();
+                        Console.WriteLine($"✓ 已从配置中移除: {thumbprintMatch.Key}");
+                    }
+                }
+                else
+                {
+                    // 否则删除所有匹配路径的证书配置
+                    foreach (var cert in certsToRemove)
+                    {
+                        config.Certificates.Remove(cert.Key);
+                    }
+                    ConfigManager.SaveConfig();
+                    Console.WriteLine($"✓ 已从配置中移除 {certsToRemove.Count} 个证书条目");
+                }
             }
 
             // 从系统证书存储中移除
@@ -591,12 +637,55 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
             {
                 try
                 {
+                    // 尝试从文件读取 Thumbprint
                     await RemoveCertificateFromSystemAsync(actualCertPath, password);
                     Console.WriteLine("✓ 已从系统证书存储中移除");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"⚠ 从系统证书存储移除失败: {ex.Message}");
+                    // 如果从文件读取失败（可能密码错误或文件被覆盖），尝试使用配置中的 Thumbprint
+                    Console.WriteLine($"⚠ 使用文件读取失败: {ex.Message}");
+                    
+                    // 从配置 key 中提取 Thumbprint（格式：Subject|Thumbprint）
+                    if (!string.IsNullOrEmpty(certSubject) && certSubject.Contains('|'))
+                    {
+                        var parts = certSubject.Split('|');
+                        if (parts.Length == 2 && parts[1].Length >= 40)
+                        {
+                            Console.WriteLine($"尝试使用配置中的 Thumbprint: {parts[1]}");
+                            try
+                            {
+                                await RemoveCertificateFromSystemByThumbprintAsync(parts[1]);
+                                Console.WriteLine("✓ 已从系统证书存储中移除");
+                            }
+                            catch (Exception ex2)
+                            {
+                                Console.WriteLine($"⚠ 从系统证书存储移除失败: {ex2.Message}");
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine($"⚠ 从系统证书存储移除失败: {ex.Message}");
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(certPath) && certPath.Length >= 40)
+                    {
+                        // 如果 certPath 本身是 Thumbprint
+                        Console.WriteLine($"尝试直接使用 Thumbprint: {certPath}");
+                        try
+                        {
+                            await RemoveCertificateFromSystemByThumbprintAsync(certPath);
+                            Console.WriteLine("✓ 已从系统证书存储中移除");
+                        }
+                        catch (Exception ex2)
+                        {
+                            Console.WriteLine($"⚠ 从系统证书存储移除失败: {ex2.Message}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"⚠ 从系统证书存储移除失败: {ex.Message}");
+                    }
                 }
             }
 
@@ -609,6 +698,131 @@ Get-ChildItem -Path Cert:\CurrentUser\My, Cert:\LocalMachine\Root, Cert:\LocalMa
             catch (Exception ex)
             {
                 Console.WriteLine($"⚠ 删除证书文件失败: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 通过 Thumbprint 在配置中查找证书
+        /// </summary>
+        private async Task<KeyValuePair<string, CertificateConfig>> FindCertificateByThumbprintAsync(AppConfig config, string thumbprint)
+        {
+            foreach (var cert in config.Certificates)
+            {
+                if (!File.Exists(cert.Value.CertificatePath))
+                    continue;
+
+                try
+                {
+                    // 计算证书文件的 Thumbprint
+                    string getThumbprintCommand;
+                    if (!string.IsNullOrEmpty(cert.Value.Password))
+                    {
+                        getThumbprintCommand = $@"
+$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2('{cert.Value.CertificatePath.Replace("'", "''")}', '{cert.Value.Password.Replace("'", "''")}')
+$cert.Thumbprint
+";
+                    }
+                    else
+                    {
+                        getThumbprintCommand = $@"
+$cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2('{cert.Value.CertificatePath.Replace("'", "''")}')
+$cert.Thumbprint
+";
+                    }
+
+                    var (success, certThumbprint, _) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{getThumbprintCommand}\"");
+                    
+                    if (success && !string.IsNullOrWhiteSpace(certThumbprint))
+                    {
+                        certThumbprint = certThumbprint.Trim();
+                        if (certThumbprint.Equals(thumbprint, StringComparison.OrdinalIgnoreCase))
+                        {
+                            return cert;
+                        }
+                    }
+                }
+                catch
+                {
+                    // 忽略无法读取的证书
+                    continue;
+                }
+            }
+
+            return default;
+        }
+
+        /// <summary>
+        /// 仅通过 Thumbprint 从系统证书存储中移除证书（不需要证书文件）
+        /// </summary>
+        private async Task RemoveCertificateFromSystemByThumbprintAsync(string thumbprint)
+        {
+            thumbprint = thumbprint.Trim();
+            Console.WriteLine($"证书指纹: {thumbprint}");
+
+            // 从所有可能的存储位置移除
+            var removeCommand = $@"
+$thumbprint = '{thumbprint}'
+$stores = @(
+    @{{Path='Cert:\CurrentUser\My'; Name='CurrentUser\My'}},
+    @{{Path='Cert:\LocalMachine\Root'; Name='LocalMachine\Root'}},
+    @{{Path='Cert:\LocalMachine\My'; Name='LocalMachine\My'}}
+)
+$removed = 0
+$failed = 0
+$needsAdmin = @()
+
+foreach ($store in $stores) {{
+    $cert = Get-ChildItem -Path $store.Path -ErrorAction SilentlyContinue | Where-Object {{ $_.Thumbprint -eq $thumbprint }}
+    if ($cert) {{
+        try {{
+            Remove-Item -Path ""$($store.Path)\$thumbprint"" -Force -ErrorAction Stop
+            # Verify deletion
+            $stillExists = Get-ChildItem -Path $store.Path -ErrorAction SilentlyContinue | Where-Object {{ $_.Thumbprint -eq $thumbprint }}      
+            if ($stillExists) {{
+                Write-Host ""[WARN] $($store.Name): Deletion command executed but certificate still exists (may need admin)"" -ForegroundColor Yellow
+                if ($store.Name -like '*LocalMachine*') {{
+                    $needsAdmin += $store.Name
+                }}
+                $failed++
+            }} else {{
+                Write-Host ""[OK] $($store.Name): Successfully deleted"" -ForegroundColor Green
+                $removed++
+            }}
+        }} catch {{
+            Write-Host ""[ERROR] $($store.Name): Deletion failed - $($_.Exception.Message)"" -ForegroundColor Red
+            if ($store.Name -like '*LocalMachine*') {{
+                $needsAdmin += $store.Name
+            }}
+            $failed++
+        }}
+    }}
+}}
+
+if ($needsAdmin.Count -gt 0) {{
+    Write-Host """"
+    Write-Host ""Note: The following store locations require administrator privileges:"" -ForegroundColor Yellow
+    foreach ($loc in $needsAdmin) {{
+        Write-Host ""  - $loc"" -ForegroundColor Yellow
+    }}
+    Write-Host ""Please run this command as administrator"" -ForegroundColor Yellow
+}}
+
+Write-Output ""Removed from $removed certificate store(s)""
+if ($failed -gt 0) {{
+    Write-Output ""Warning: $failed store location(s) failed""
+}}
+";
+
+            // Use Base64 encoding to avoid quote escaping issues
+            var scriptBytes = System.Text.Encoding.Unicode.GetBytes(removeCommand);
+            var encodedCommand = Convert.ToBase64String(scriptBytes);
+            var (success, output, error) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-NoProfile -EncodedCommand {encodedCommand}");            if (success && !string.IsNullOrWhiteSpace(output))
+            {
+                Console.WriteLine(output.Trim());
+            }
+            else if (!string.IsNullOrWhiteSpace(error))
+            {
+                throw new InvalidOperationException($"移除证书失败: {error}");
             }
         }
 
@@ -647,21 +861,61 @@ $cert.Thumbprint
             // 从所有可能的存储位置移除
             var removeCommand = $@"
 $thumbprint = '{thumbprint}'
-$stores = @('Cert:\CurrentUser\My', 'Cert:\LocalMachine\Root', 'Cert:\LocalMachine\My')
+$stores = @(
+    @{{Path='Cert:\CurrentUser\My'; Name='CurrentUser\My'}},
+    @{{Path='Cert:\LocalMachine\Root'; Name='LocalMachine\Root'}},
+    @{{Path='Cert:\LocalMachine\My'; Name='LocalMachine\My'}}
+)
 $removed = 0
+$failed = 0
+$needsAdmin = @()
+
 foreach ($store in $stores) {{
-    $cert = Get-ChildItem -Path $store -ErrorAction SilentlyContinue | Where-Object {{ $_.Thumbprint -eq $thumbprint }}
+    $cert = Get-ChildItem -Path $store.Path -ErrorAction SilentlyContinue | Where-Object {{ $_.Thumbprint -eq $thumbprint }}
     if ($cert) {{
-        Remove-Item -Path ""$store\$thumbprint"" -Force -ErrorAction SilentlyContinue
-        $removed++
+        try {{
+            Remove-Item -Path ""$($store.Path)\$thumbprint"" -Force -ErrorAction Stop
+            # Verify deletion
+            $stillExists = Get-ChildItem -Path $store.Path -ErrorAction SilentlyContinue | Where-Object {{ $_.Thumbprint -eq $thumbprint }}      
+            if ($stillExists) {{
+                Write-Host ""[WARN] $($store.Name): Deletion command executed but certificate still exists (may need admin)"" -ForegroundColor Yellow
+                if ($store.Name -like '*LocalMachine*') {{
+                    $needsAdmin += $store.Name
+                }}
+                $failed++
+            }} else {{
+                Write-Host ""[OK] $($store.Name): Successfully deleted"" -ForegroundColor Green
+                $removed++
+            }}
+        }} catch {{
+            Write-Host ""[ERROR] $($store.Name): Deletion failed - $($_.Exception.Message)"" -ForegroundColor Red
+            if ($store.Name -like '*LocalMachine*') {{
+                $needsAdmin += $store.Name
+            }}
+            $failed++
+        }}
     }}
 }}
-Write-Host ""已从 $removed 个证书存储中移除""
+
+if ($needsAdmin.Count -gt 0) {{
+    Write-Host """"
+    Write-Host ""Note: The following store locations require administrator privileges:"" -ForegroundColor Yellow
+    foreach ($loc in $needsAdmin) {{
+        Write-Host ""  - $loc"" -ForegroundColor Yellow
+    }}
+    Write-Host ""Please run this command as administrator"" -ForegroundColor Yellow
+}}
+
+Write-Host ""Removed from $removed certificate store(s)""
+if ($failed -gt 0) {{
+    Write-Host ""Warning: $failed store location(s) failed""
+}}
 ";
 
-            var (success2, output2, error2) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-Command \"{removeCommand}\"");
-
-            if (!success2)
+            // Use Base64 encoding to avoid quote escaping issues
+            var scriptBytes2 = System.Text.Encoding.Unicode.GetBytes(removeCommand);
+            var encodedCommand2 = Convert.ToBase64String(scriptBytes2);
+            var (success2, output2, error2) = await WindowsSdkHelper.ExecuteCommandAsync("powershell.exe", $"-NoProfile -EncodedCommand {encodedCommand2}");            if (!success2)
             {
                 throw new InvalidOperationException($"移除证书失败: {error2}");
             }
