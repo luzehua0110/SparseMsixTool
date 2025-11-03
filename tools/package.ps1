@@ -11,22 +11,40 @@ Write-Host "==> Publishing Config" -ForegroundColor Cyan
 Write-Host " Runtime: $Runtime"
 Write-Host " AOT: $($Aot.IsPresent)"
 
-$publishDir = Join-Path $PSScriptRoot "..\publish"
-if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
+# For AOT, build to bin/ and package from native/ subdirectory
+# For standard, publish to publish/ directory
+$csprojPath = Join-Path $PSScriptRoot "..\SparseMsixTool.csproj"
 
-$pubArgs = @("publish", "-c", "Release", "-r", $Runtime, "--self-contained", "true", "-o", $publishDir)
-if ($Aot) { $pubArgs += "/p:PublishAot=true" }
-
-Write-Host "==> Running dotnet $($pubArgs -join " ")" -ForegroundColor Yellow
-& dotnet @pubArgs
-if ($LASTEXITCODE -ne 0) { throw "Publish failed" }
-
-$exe = Join-Path $publishDir "sparsemsix.exe"
-if (!(Test-Path $exe)) { throw "sparsemsix.exe not found: $exe" }
+if ($Aot) {
+    $buildArgs = @("build", $csprojPath, "-c", "Release", "-r", $Runtime, "/p:PublishAot=true")
+    Write-Host "==> Running dotnet $($buildArgs -join " ")" -ForegroundColor Yellow
+    & dotnet @buildArgs
+    if ($LASTEXITCODE -ne 0) { throw "Build failed" }
+    
+    $nativeDir = Join-Path $PSScriptRoot "..\bin\Release\net8.0\$Runtime\native"
+    $exe = Join-Path $nativeDir "sparsemsix.exe"
+    if (!(Test-Path $exe)) { throw "Native AOT sparsemsix.exe not found: $exe" }
+    
+    # Create clean publish directory with only the AOT executable
+    $publishDir = Join-Path $PSScriptRoot "..\publish"
+    if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
+    New-Item -ItemType Directory -Path $publishDir | Out-Null
+    Copy-Item $exe $publishDir -Force
+} else {
+    $publishDir = Join-Path $PSScriptRoot "..\publish"
+    if (Test-Path $publishDir) { Remove-Item $publishDir -Recurse -Force }
+    
+    $pubArgs = @("publish", $csprojPath, "-c", "Release", "-r", $Runtime, "--self-contained", "true", "-o", $publishDir)
+    Write-Host "==> Running dotnet $($pubArgs -join " ")" -ForegroundColor Yellow
+    & dotnet @pubArgs
+    if ($LASTEXITCODE -ne 0) { throw "Publish failed" }
+    
+    $exe = Join-Path $publishDir "sparsemsix.exe"
+    if (!(Test-Path $exe)) { throw "sparsemsix.exe not found: $exe" }
+}
 
 Write-Host "(legacy alias msixtool.exe 已移除)" -ForegroundColor DarkGray
 
-$csprojPath = Join-Path $PSScriptRoot "..\SparseMsixTool.csproj"
 $csprojContent = Get-Content $csprojPath -Raw
 if ($csprojContent -match "<Version>([\d\.]+)</Version>") {
     $version = $Matches[1]
