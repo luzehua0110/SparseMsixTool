@@ -330,14 +330,9 @@ namespace SparseMsixTool.Commands
                         
                         // 复制资源到临时目录（打包到MSIX中）
                         ResourceHelper.CopyResourcesToDestination(manifestDir, tempPackDir, resources, showMessage: false);
-                        
-                        // 在临时目录中创建占位符exe（仅用于打包）
-                        var exeName = Path.GetFileName(finalDest);
-                        var placeholderExePath = Path.Combine(tempPackDir, exeName);
-                        File.WriteAllBytes(placeholderExePath, new byte[] { 0x4D, 0x5A }); // MZ header
-                        Console.WriteLine($"✓ 已创建占位符程序: {exeName}");
 
                         // 第1步: 打包成MSIX（使用临时目录）
+                        // Note: Sparse packages do not need to include the executable file
                         Console.WriteLine();
                         Console.WriteLine("======== 第1步: 打包 ========");
                         var packService = new PackageService();
@@ -380,7 +375,8 @@ namespace SparseMsixTool.Commands
                             Console.WriteLine("未提供证书参数，正在查找或创建证书...");
                             var publisher = ManifestHelper.GetPublisherFromManifest(manifestPath);
                             var certService = new CertificateService();
-                            actualCert = await certService.GetOrCreateCertificateAsync(publisher, sourcePath);
+                            // Pass null to use the program's data directory for certificate storage
+                            actualCert = await certService.GetOrCreateCertificateAsync(publisher, null);
                         }
 
                         // 第3步: 签名MSIX包
@@ -576,7 +572,8 @@ namespace SparseMsixTool.Commands
 
                     try
                     {
-                        // 如果使用临时目录，需要复制资源和创建占位符
+                        // 如果使用临时目录，需要复制资源
+                        // Note: Sparse packages do not need to include the executable file
                         if (tempPackDir != null && !string.IsNullOrEmpty(dest))
                         {
                             // 复制清单文件
@@ -586,12 +583,6 @@ namespace SparseMsixTool.Commands
                             var resources = ResourceHelper.GetReferencedResources(manifestPath);
                             Console.WriteLine($"检测到 {resources.Count} 个资源文件需要打包");
                             ResourceHelper.CopyResourcesToDestination(manifestDir, tempPackDir, resources, showMessage: false);
-                            
-                            // 创建占位符exe
-                            var exeName = Path.GetFileName(dest);
-                            var placeholderExePath = Path.Combine(tempPackDir, exeName);
-                            File.WriteAllBytes(placeholderExePath, new byte[] { 0x4D, 0x5A });
-                            Console.WriteLine($"✓ 已创建占位符程序: {exeName}");
                         }
 
                         // 打包
@@ -655,7 +646,8 @@ namespace SparseMsixTool.Commands
                             Console.WriteLine("未提供证书参数，正在查找或创建证书...");
                             var publisher = ManifestHelper.GetPublisherFromManifest(manifestPath);
                             var certService = new CertificateService();
-                            actualCert = await certService.GetOrCreateCertificateAsync(publisher, sourcePath);
+                            // Pass null to use the program's data directory for certificate storage
+                            actualCert = await certService.GetOrCreateCertificateAsync(publisher, null);
                         }
 
                         // 签名

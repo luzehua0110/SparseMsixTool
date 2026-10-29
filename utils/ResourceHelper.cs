@@ -83,6 +83,17 @@ namespace SparseMsixTool.Utils
                             }
                         }
                     }
+
+                    // Include resources.pri if it exists in the input directory
+                    var resourcesPriPath = Path.Combine(manifestDir, "resources.pri");
+                    if (File.Exists(resourcesPriPath))
+                    {
+                        if (!resources.Contains("resources.pri"))
+                        {
+                            resources.Add("resources.pri");
+                            Console.WriteLine("✓ 检测到 resources.pri 文件，将其包含到稀疏包中");
+                        }
+                    }
                 }
 
                 return resources;
